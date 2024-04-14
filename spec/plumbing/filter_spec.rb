@@ -1,5 +1,6 @@
 require "spec_helper"
 
+require "plumbing/pipe"
 require "plumbing/filter"
 
 RSpec.describe Plumbing::Filter do

@@ -2,8 +2,6 @@
 
 require "dry/types"
 module Plumbing
-  class Error < StandardError; end
-
   require_relative "plumbing/version"
 
   require_relative "plumbing/event"

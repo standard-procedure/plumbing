@@ -1,31 +1,12 @@
-require "dry/types"
-require_relative "event"
+require_relative "blocked_pipe"
 
 module Plumbing
-  InvalidEvent = Dry::Types::ConstraintError
-  InvalidObserver = Dry::Types::ConstraintError
-
-  class Pipe
-    module Types
-      include Dry::Types()
-      Event = Instance(Plumbing::Event)
-      Observer = Interface(:call)
-    end
-
+  # An implementation of a pipe that uses Fibers
+  class Pipe < BlockedPipe
     def initialize
-      @observers = []
-      @fiber = Fiber.new do |event|
-        loop do
-          break if event == :shutdown
-          @observers.each do |observer|
-            observer.call event
-          rescue
-            nil
-          end
-          event = Fiber.yield
-        end
-        # clean up and release any observers, just in case
-        @observers = []
+      super()
+      @fiber = Fiber.new do |initial_event|
+        start_run_loop initial_event
       end
     end
 
@@ -33,23 +14,15 @@ module Plumbing
       @fiber.resume Types::Event[event]
     end
 
-    def add_observer callable = nil, &block
-      callable ||= block.to_proc
-      Types::Observer[callable].tap do |observer|
-        @observers << observer
-      end
-    end
-
-    def remove_observer callable
-      @observers.delete callable
-    end
-
     def shutdown
+      super
       @fiber.resume :shutdown
     end
 
-    def self.start(**params)
-      new(**params)
+    protected
+
+    def get_next_event
+      Fiber.yield
     end
   end
 end

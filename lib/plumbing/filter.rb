@@ -1,14 +1,19 @@
 require "dry/types"
-require_relative "pipe"
+require_relative "blocked_pipe"
 
 module Plumbing
-  class Filter < Pipe
+  # A pipe that filters events from a source pipe
+  class Filter < BlockedPipe
     module Types
       include Dry::Types()
-      Source = Instance(Plumbing::Pipe)
+      Source = Instance(Plumbing::BlockedPipe)
       EventTypes = Array.of(Plumbing::Event::Types::EventType)
     end
 
+    # Chain this pipe to the source pipe
+    # @param source [Plumbing::BlockedPipe]
+    # @param accepts [Array[String]] event types that this filter will allow through (or pass [] to allow all)
+    # @param rejects [Array[String]] event types that this filter will not allow through
     def initialize source:, accepts: [], rejects: []
       super()
       @accepted_event_types = Types::EventTypes[accepts]
@@ -23,7 +28,7 @@ module Plumbing
     def filter_and_republish event
       return nil if @accepted_event_types.any? && !@accepted_event_types.include?(event.type)
       return nil if @rejected_event_types.include? event.type
-      self << event
+      dispatch event
     end
   end
 end

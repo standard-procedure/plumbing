@@ -63,6 +63,13 @@ module Plumbing
       @observers.delete observer
     end
 
+    # Test whether the given observer is observing this pipe
+    # @param observer
+    # @return [boolean]
+    def is_observer? observer
+      @observers.include? observer
+    end
+
     # Close this pipe and perform any cleanup.
     # Subclasses should override this to perform their own shutdown routines and call `super` to ensure everything is tidied up
     def shutdown
