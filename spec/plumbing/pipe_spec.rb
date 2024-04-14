@@ -76,4 +76,34 @@ RSpec.describe Plumbing::Pipe do
     @pipe << @second_event
     expect(@results).to eq [@first_event]
   end
+
+  it "handles exceptions raised by observers" do
+    @pipe = Plumbing::Pipe.start
+
+    @failing_observer = @pipe.add_observer do |event|
+      raise "Failed processing #{event.type}"
+    end
+    @results = []
+    @working_observer = @pipe.add_observer do |event|
+      @results << event
+    end
+
+    @event = Plumbing::Event.new type: "some_event", data: {test: "event"}
+    @pipe << @event
+    expect(@results.count).to eq 1
+  end
+
+  it "shuts down, ends the internal fiber and releases all observers" do
+    @pipe = Plumbing::Pipe.start
+
+    @results = []
+    @observer = @pipe.add_observer do |event|
+      @results << event
+    end
+
+    @pipe.shutdown
+    @event = Plumbing::Event.new type: "some_event", data: {test: "event"}
+    expect { @pipe << @event }.to raise_error(FiberError)
+    expect(@results).to be_empty
+  end
 end

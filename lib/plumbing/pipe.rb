@@ -19,9 +19,13 @@ module Plumbing
           break if event == :shutdown
           @observers.each do |observer|
             observer.call event
+          rescue
+            nil
           end
           event = Fiber.yield
         end
+        # clean up and release any observers, just in case
+        @observers = []
       end
     end
 
@@ -38,6 +42,10 @@ module Plumbing
 
     def remove_observer callable
       @observers.delete callable
+    end
+
+    def shutdown
+      @fiber.resume :shutdown
     end
 
     def self.start(**params)

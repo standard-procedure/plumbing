@@ -3,7 +3,7 @@
 require_relative "lib/plumbing/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "standard_procedure_plumbing"
+  spec.name = "standard-procedure-plumbing"
   spec.version = Plumbing::VERSION
   spec.authors = ["Rahoul Baruah"]
   spec.email = ["rahoulb@echodek.co"]
