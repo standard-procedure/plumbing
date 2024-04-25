@@ -1,30 +1,14 @@
-require "dry/types"
 require_relative "error"
 require_relative "event"
 
 module Plumbing
-  # Error raised because an invalid [Event] object was pushed into the pipe
-  InvalidEvent = Dry::Types::ConstraintError
-  # Error raised because an invalid observer was registered
-  InvalidObserver = Dry::Types::ConstraintError
-  # Error raised because a BlockedPipe was used instead of an actual implementation of a Pipe
-  class PipeIsBlocked < Plumbing::Error; end
-
   # The "plumbing" for a Pipe.
   # This class is "blocked", in that it won't push any events to registered observers.
   # Instead, this is the basis for subclasses like [Plumbing::Pipe] which actually allow events to flow through them.
   class BlockedPipe
-    module Types
-      include Dry::Types()
-      # Events must be Plumbing::Event instances or subclasses
-      Event = Instance(Plumbing::Event)
-      # Observers must have a `call` method
-      Observer = Interface(:call)
-    end
-
     # Create a new BlockedPipe
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
-    def initialize
+    def initialize(**)
       @observers = []
     end
 
@@ -51,9 +35,9 @@ module Plumbing
     # Either a `callable` or a `block` must be supplied.  If the latter, it is converted to a [Proc]
     def add_observer callable = nil, &block
       callable ||= block.to_proc
-      Types::Observer[callable].tap do |observer|
-        @observers << observer
-      end
+      raise InvalidObserver.new unless callable.respond_to? :call
+      @observers << callable
+      callable
     end
 
     # Remove an observer from this pipe
@@ -86,26 +70,6 @@ module Plumbing
 
     protected
 
-    # Get the next event from the queue
-    # @return [Plumbing::Event]
-    # Subclasses should implement this method
-    def get_next_event
-      raise PipeIsBlocked
-    end
-
-    # Start the event loop
-    # This loop keeps running until `shutdown` is called
-    # Some subclasses may need to replace this method to deal with their own specific implementations
-    # @param initial_event [Plumbing::Event] optional; the first event in the queue
-    def start_run_loop initial_event = nil
-      loop do
-        event = initial_event || get_next_event
-        break if event == :shutdown
-        dispatch event
-        initial_event = nil
-      end
-    end
-
     # Dispatch an event to all observers
     # @param event [Plumbing::Event]
     # Enumerates all observers and `calls` them with this event
@@ -114,7 +78,6 @@ module Plumbing
       @observers.collect do |observer|
         observer.call event
       rescue => ex
-        puts ex
         ex
       end
     end

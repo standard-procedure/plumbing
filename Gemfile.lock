@@ -2,37 +2,14 @@ PATH
   remote: .
   specs:
     standard-procedure-plumbing (0.1.0)
-      dry-struct
-      dry-types
 
 GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.2)
-    bigdecimal (3.1.6)
     coderay (1.1.3)
     concurrent-ruby (1.2.3)
     diff-lcs (1.5.1)
-    dry-core (1.0.1)
-      concurrent-ruby (~> 1.0)
-      zeitwerk (~> 2.6)
-    dry-inflector (1.0.0)
-    dry-logic (1.5.0)
-      concurrent-ruby (~> 1.0)
-      dry-core (~> 1.0, < 2)
-      zeitwerk (~> 2.6)
-    dry-struct (1.6.0)
-      dry-core (~> 1.0, < 2)
-      dry-types (>= 1.7, < 2)
-      ice_nine (~> 0.11)
-      zeitwerk (~> 2.6)
-    dry-types (1.7.2)
-      bigdecimal (~> 3.0)
-      concurrent-ruby (~> 1.0)
-      dry-core (~> 1.0)
-      dry-inflector (~> 1.0)
-      dry-logic (~> 1.4)
-      zeitwerk (~> 2.6)
     ffi (1.16.3)
     formatador (1.1.0)
     guard (2.18.1)
@@ -62,7 +39,6 @@ GEM
       standard
     guard-yield (0.1.0)
       guard-compat (~> 1.0)
-    ice_nine (0.11.2)
     json (2.7.2)
     language_server-protocol (3.17.0.3)
     lint_roller (1.1.0)
@@ -75,6 +51,16 @@ GEM
     notiffany (0.1.3)
       nenv (~> 0.1)
       shellany (~> 0.0)
+    opal (1.8.2)
+      ast (>= 2.3.0)
+      parser (~> 3.0, >= 3.0.3.2)
+    opal-rspec (1.0.0)
+      opal (>= 1.6.0a, < 2.0)
+      rake (>= 12.0)
+    opal-sprockets (1.0.3)
+      opal (>= 1.0, < 2.0)
+      sprockets (~> 4.0)
+      tilt (>= 1.4)
     parallel (1.24.0)
     parser (3.3.0.5)
       ast (~> 2.4.1)
@@ -83,6 +69,7 @@ GEM
       coderay (~> 1.1)
       method_source (~> 1.0)
     racc (1.7.3)
+    rack (3.0.10)
     rainbow (3.1.1)
     rake (13.2.1)
     rb-fsevent (0.11.2)
@@ -121,6 +108,9 @@ GEM
       rubocop-ast (>= 1.30.0, < 2.0)
     ruby-progressbar (1.13.0)
     shellany (0.0.1)
+    sprockets (4.2.1)
+      concurrent-ruby (~> 1.0)
+      rack (>= 2.2.4, < 4)
     standard (1.35.1)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.0)
@@ -134,8 +124,8 @@ GEM
       lint_roller (~> 1.1)
       rubocop-performance (~> 1.20.2)
     thor (1.3.1)
+    tilt (2.3.0)
     unicode-display_width (2.5.0)
-    zeitwerk (2.6.13)
 
 PLATFORMS
   arm64-darwin-23
@@ -148,11 +138,13 @@ DEPENDENCIES
   guard-rspec
   guard-standardrb
   guard-yield
+  opal
+  opal-rspec
+  opal-sprockets
   rake (~> 13.0)
   rspec (~> 3.0)
   standard (~> 1.3)
   standard-procedure-plumbing!
-  zeitwerk
 
 BUNDLED WITH
    2.5.6

@@ -1,17 +1,16 @@
-require "dry/types"
-require "dry/struct"
+require_relative "error"
 
 module Plumbing
   # An immutable data structure representing an Event
-  class Event < Dry::Struct
-    module Types
-      include Dry::Types()
-      SequenceNumber = Strict::Integer
-      EventType = Strict::String
-      EventData = Strict::Hash.default({}.freeze)
+  class Event
+    def initialize type:, data: {}
+      raise InvalidEvent.new("Type is invalid #{type}") unless String === type
+      raise InvalidEvent.new("Data is invalid #{data.class}") unless Hash === data
+      @type = type.freeze
+      @data = data.freeze
     end
 
-    attribute :type, Types::EventType
-    attribute :data, Types::EventData
+    attr_reader :type
+    attr_reader :data
   end
 end

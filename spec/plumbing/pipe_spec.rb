@@ -91,6 +91,7 @@ RSpec.describe Plumbing::Pipe do
     end
 
     @pipe.shutdown
-    expect { @pipe.notify "some_event" }.to raise_error(FiberError)
+    @pipe.notify "some_event"
+    expect(@results).to be_empty
   end
 end

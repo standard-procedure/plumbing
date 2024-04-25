@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+if RUBY_ENGINE == "opal"
+  require "opal/rspec"
+end
+
 require "plumbing"
 
 RSpec.configure do |config|
