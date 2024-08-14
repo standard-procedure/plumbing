@@ -9,10 +9,10 @@ module Plumbing
   class PostConditionError < Error; end
 
   # Error raised because an invalid [Event] object was pushed into the pipe
-  InvalidEvent = Dry::Types::ConstraintError
+  class InvalidEvent < Error; end
 
   # Error raised because an invalid observer was registered
-  InvalidObserver = Dry::Types::ConstraintError
+  class InvalidObserver < Error; end
 
   # Error raised because a BlockedPipe was used instead of an actual implementation of a Pipe
   class PipeIsBlocked < Plumbing::Error; end

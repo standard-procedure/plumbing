@@ -14,13 +14,14 @@ RSpec.describe Plumbing::Filter do
       @results << event
     end
 
-    @pipe << Plumbing::Event.new(type: "first_type")
+    @pipe << Plumbing::Event.new(type: "first_type", data: nil)
     expect(@results.count).to eq 1
 
-    @pipe << Plumbing::Event.new(type: "second_type")
+    @pipe << Plumbing::Event.new(type: "second_type", data: nil)
     expect(@results.count).to eq 1
 
-    @pipe << Plumbing::Event.new(type: "third_type")
+    # Use the alternative syntax
+    @pipe.notify "third_type"
     expect(@results.count).to eq 2
   end
 
@@ -34,13 +35,14 @@ RSpec.describe Plumbing::Filter do
       @results << event
     end
 
-    @pipe << Plumbing::Event.new(type: "first_type")
+    @pipe.notify "first_type"
     expect(@results.count).to eq 0
 
-    @pipe << Plumbing::Event.new(type: "second_type")
+    @pipe.notify "second_type"
     expect(@results.count).to eq 1
 
-    @pipe << Plumbing::Event.new(type: "third_type")
+    # use the alternative syntax
+    @pipe << Plumbing::Event.new(type: "third_type", data: nil)
     expect(@results.count).to eq 1
   end
 end

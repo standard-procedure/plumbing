@@ -95,8 +95,6 @@ end
 # => "two"
 ```
 
-There is also [Plumbing::Concurrent::Pipe](/lib/plumbing/concurrent/pipe.rb) that uses a Ractor to dispatch events.  Use with caution as Ractors are still experimental, plus they have strict conditions about the data that can be passed across Ractor boundaries.  
-
 ## Plumbing::Chain - a chain of operations that occur in sequence
 
 Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.

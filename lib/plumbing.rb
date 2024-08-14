@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "dry/types"
 module Plumbing
   require_relative "plumbing/version"
 

@@ -1,3 +1,8 @@
+## [0.1.2] - 2024-08-14
+
+ - Removed dependencies
+ - Removed Ractor-based concurrent pipe (as I don't trust it yet)
+
 ## [0.1.1] - 2024-08-14
 
 - Tidied up the code

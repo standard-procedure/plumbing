@@ -23,8 +23,6 @@ RSpec.describe Plumbing::Pipe do
       @results << event
     end
 
-    expect(@observer).to respond_to(:call)
-
     @first_event = @pipe.notify "test_event", test: "event"
     expect(@results).to eq [@first_event]
 

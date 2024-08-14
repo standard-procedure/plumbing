@@ -11,7 +11,8 @@ module Plumbing
     end
 
     def << event
-      @fiber.resume Types::Event[event]
+      raise Plumbing::InvalidEvent.new "event is not a Plumbing::Event" unless event.is_a? Plumbing::Event
+      @fiber.resume event
     end
 
     def shutdown

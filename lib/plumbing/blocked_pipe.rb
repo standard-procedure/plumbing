@@ -1,4 +1,3 @@
-require "dry/types"
 require_relative "error"
 require_relative "event"
 
@@ -7,14 +6,6 @@ module Plumbing
   # This class is "blocked", in that it won't push any events to registered observers.
   # Instead, this is the basis for subclasses like [Plumbing::Pipe] which actually allow events to flow through them.
   class BlockedPipe
-    module Types
-      include Dry::Types()
-      # Events must be Plumbing::Event instances or subclasses
-      Event = Instance(Plumbing::Event)
-      # Observers must have a `call` method
-      Observer = Interface(:call)
-    end
-
     # Create a new BlockedPipe
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
     def initialize
@@ -25,13 +16,13 @@ module Plumbing
     # @param event [Plumbing::Event] the event to push into the pipe
     # Subclasses should implement this method
     def << event
-      raise PipeIsBlocked
+      raise Plumbing::PipeIsBlocked
     end
 
     # A shortcut to creating and then pushing an event
     # @param event_type [String] representing the type of event this is
     # @param data [Hash] representing the event-specific data to be passed to the observers
-    def notify event_type, **data
+    def notify event_type, data = nil
       Event.new(type: event_type, data: data).tap do |event|
         self << event
       end
@@ -42,11 +33,10 @@ module Plumbing
     # @param &block [Block] (optional)
     # @return an object representing this observer (dependent upon the implementation of the pipe itself)
     # Either a `callable` or a `block` must be supplied.  If the latter, it is converted to a [Proc]
-    def add_observer callable = nil, &block
-      callable ||= block.to_proc
-      Types::Observer[callable].tap do |observer|
-        @observers << observer
-      end
+    def add_observer observer = nil, &block
+      observer ||= block.to_proc
+      raise Plumbing::InvalidObserver.new "observer_does_not_respond_to_call" unless observer.respond_to? :call
+      @observers << observer
     end
 
     # Remove an observer from this pipe
@@ -83,7 +73,7 @@ module Plumbing
     # @return [Plumbing::Event]
     # Subclasses should implement this method
     def get_next_event
-      raise PipeIsBlocked
+      raise Plumbing::PipeIsBlocked
     end
 
     # Start the event loop
