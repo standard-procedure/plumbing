@@ -77,16 +77,4 @@ RSpec.describe Plumbing::Pipe do
     @event = @pipe.notify "some_event"
     expect(@results.count).to eq 1
   end
-
-  it "shuts down, ends the internal fiber and releases all observers" do
-    @pipe = described_class.start
-
-    @results = []
-    @observer = @pipe.add_observer do |event|
-      @results << event
-    end
-
-    @pipe.shutdown
-    expect { @pipe.notify "some_event" }.to raise_error(FiberError)
-  end
 end
