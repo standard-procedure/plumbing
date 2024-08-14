@@ -1,5 +1,3 @@
-require_relative "blocked_pipe"
-
 module Plumbing
   # A pipe that filters events from a source pipe
   class Filter < BlockedPipe

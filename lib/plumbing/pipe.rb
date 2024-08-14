@@ -1,5 +1,3 @@
-require_relative "blocked_pipe"
-
 module Plumbing
   # An implementation of a pipe that uses Fibers
   class Pipe < BlockedPipe

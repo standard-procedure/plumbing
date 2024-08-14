@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = "Plumbing - various pipelines for your ruby application"
   spec.description = "A composable event pipeline and sequential pipelines of operations"
-  spec.homepage = "https://theartandscienceofruby.com"
+  spec.homepage = "https://github.com/standard-procedure/plumbing"
   spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"

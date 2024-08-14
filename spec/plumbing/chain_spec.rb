@@ -1,6 +1,4 @@
 require "spec_helper"
-
-require "plumbing/chain"
 require "dry/validation"
 
 RSpec.describe Plumbing::Chain do

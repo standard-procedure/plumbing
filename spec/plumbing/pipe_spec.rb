@@ -1,7 +1,5 @@
 require "spec_helper"
 
-require "plumbing/pipe"
-
 RSpec.describe Plumbing::Pipe do
   it "pushes an event into the pipe" do
     @pipe = described_class.start

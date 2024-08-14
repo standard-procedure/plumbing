@@ -1,6 +1,3 @@
-require_relative "error"
-require_relative "event"
-
 module Plumbing
   # The "plumbing" for a Pipe.
   # This class is "blocked", in that it won't push any events to registered observers.
