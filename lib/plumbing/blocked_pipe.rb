@@ -3,13 +3,6 @@ require_relative "error"
 require_relative "event"
 
 module Plumbing
-  # Error raised because an invalid [Event] object was pushed into the pipe
-  InvalidEvent = Dry::Types::ConstraintError
-  # Error raised because an invalid observer was registered
-  InvalidObserver = Dry::Types::ConstraintError
-  # Error raised because a BlockedPipe was used instead of an actual implementation of a Pipe
-  class PipeIsBlocked < Plumbing::Error; end
-
   # The "plumbing" for a Pipe.
   # This class is "blocked", in that it won't push any events to registered observers.
   # Instead, this is the basis for subclasses like [Plumbing::Pipe] which actually allow events to flow through them.

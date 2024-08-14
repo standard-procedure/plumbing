@@ -53,6 +53,7 @@ class EveryThirdEvent < Plumbing::CustomFilter
 
   def received event
     @events << event
+    # if we've already stored 2 events in the buffer then broadcast the newest event and clear the buffer
     if @events.count >= 2
       @events.clear
       self << event
@@ -61,8 +62,7 @@ class EveryThirdEvent < Plumbing::CustomFilter
 end
 
 @source = Plumbing::Pipe.start
-
-@filter = EveryThirdEvent.new(source :@source)
+@filter = EveryThirdEvent.new(source: @source)
 
 @observer = @filter.add_observer do |event|
   puts event.type
@@ -95,74 +95,71 @@ end
 # => "two"
 ```
 
-## Plumbing::Chain - a chain of method calls
+There is also [Plumbing::Concurrent::Pipe](/lib/plumbing/concurrent/pipe.rb) that uses a Ractor to dispatch events.  Use with caution as Ractors are still experimental, plus they have strict conditions about the data that can be passed across Ractor boundaries.  
+
+## Plumbing::Chain - a chain of operations that occur in sequence
+
+Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.
+
+You can define pre-conditions (which validate the inputs supplied) or post-conditions (which validate the output).  
 
 ### Usage:
 
-A simple chain of events
 ```ruby
 require "plumbing"
-
-class ContrivedExample < Plumbing::Chain
-  step :validate_is_a_string
-  step :validate_does_not_say_boom
-  step :downcase
-
-  private
-
-  def validate_is_a_string input
-    raise "Not a string" unless input.is_a? String
-    input
+class BuildSequence < Plumbing::Chain 
+  pre_condition :must_be_an_array do |input| 
+    input.is_a? Array 
   end
 
-  def validate_does_not_say_boom input
-    raise "This says BOOM which is not allowed" if input == "BOOM"
-    input
+  post_condition :must_have_three_elements do |output|
+    # yes, this is a stupid post-condition but it shows how you can ensure your outputs are valid
+    output.length == 3
   end
 
-  def downcase input
-    input.downcase
+  perform :add_first
+  perform :add_second
+  perform :add_third
+
+  private 
+
+  def add_first input 
+    input << "first"
+  end
+
+  def add_second input 
+    input << "second" 
+  end
+
+  def add_third input 
+    input << "third"
   end
 end
 
-ContrivedExample.new.call("HELLO").then(result) do
-  puts result
-end
-# => result
+BuildSequence.new.call []
+# => ["first", "second", "third"]
 
-ContrivedExample.new.call("BOOM").then(result) do
-  puts result
-end.fail(error) do
-  puts error.class
-end
-# => RuntimeError
+BuildSequence.new.call 1
+# => Plumbing::PreconditionError("must_be_an_array")
 
+BuildSequence.new.call ["extra element"]
+# => Plumbing::PostconditionError("must_have_three_elements")
 ```
 
 ## Installation
 
 Install the gem and add to the application's Gemfile by executing:
 
-    $ bundle add standard-procedure-plumbing
+```sh
+bundle add standard-procedure-plumbing
+```
 
-## Usage
+Then:
 
-Create a pipe, chain pipes together, add observers and push events
+```ruby
+require 'plumbing'
+```
 
-    require 'plumbing'
-
-    @pipe = Plumbing::Pipe.start
-    @filter = Plumbing::Filter.start source: @pipe, accepts: %w[important urgent]
-    @observer = @filter.add_observer do |event|
-      puts event.type
-    end
-
-    @pipe << Event.new(type: "unimportant", data: { some: "data"})
-    # => no output
-    @pipe << Event.new(type: "important", data: { some: "data"})
-    # => "important"
-
-    @filter.remove_observer @observer
 
 ## Development
 
