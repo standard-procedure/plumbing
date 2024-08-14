@@ -1,27 +1,145 @@
 # Plumbing
 
-Composable Observer
+## Plumbing::Pipe - a composable observer
 
 [Observers](https://ruby-doc.org/3.3.0/stdlibs/observer/Observable.html) in Ruby are a pattern where objects (observers) register their interest in another object (the observable).  This pattern is common throughout programming languages (event listeners in Javascript, the dependency protocol in [Smalltalk](https://en.wikipedia.org/wiki/Smalltalk)).
 
-Unlike ruby's in-built observers, this gem makes observers "composable".  Instead of simply registering for notifications from the observable, we observe a stream of notifications, which could be produced by multiple observables, all being sent through the same pipe.  We can then chain observers together, composing a "pipeline" of operations from a single source of events.
+[Plumbing::Pipe](lib/plumbing/pipe.rb) makes observers "composable".  Instead of simply registering for notifications from the observable, we observe a stream of notifications, which could be produced by multiple observables, all being sent through the same pipe.  We can then chain observers together, composing a "pipeline" of operations from a single source of events.
 
-For example, in a social-networking application, you may push all events associated with a user through a single pipe.  But one module within the application is only interested in follow requests, another module in comments.  So the "followers" module would attach a "filter pipe" to the "users" pipe, filtering out everything except follow requests.  Then the code within that module observes this "filter pipe" so only gets notified about follow requests.  And similarly, the "comments" module attaches a "filter pipe" to the "users" pipe, filtering out everything except "comments".
+### Usage
 
-However, the pipeline can do much more than simple filtering.
+A simple observer:
+```ruby
+require "plumbing"
 
-In a search engine application, it is important to keep a record of what has been searched for, but more importantly, which of those search results resulted in a click - as you can then use this data to improve your search results in future.  We could implement a chain of observers, from the pipe that records all search related events, a filter that looks at the events from a single user, to another observer that maintains a log of every search result for a given user from the last 30 minutes and then matches any clicks to those results - sending those matches to an analytics service.
+@source = Plumbing::Pipe.start
 
-The key fact is that each element in the chain of observers is only aware of the stream of events from the element just before it.  And when it outputs its own events, any observers to that stream are only aware of the element they have subscribed to.  This means that the chain works in a similar manner to unix pipes.
+@observer = @source.add_observer do |event|
+  puts event.type
+end
 
-In unix, you can use `cat logfile | grep -o "some text" | ec -l` to easily count the number of times "some text" occurs in your logfile.  Each individual command in that pipeline is extremely simple and optimised for its one task.  But piping them together gives you incredible flexibility and power.
+@source.notify "something_happened", message: "But what was it?"
+# => "something_happened"
+```
 
-The same is true when you compose a pipeline of observers, each of which watches the events in a stream.  You can attach observers which buffer the incoming events, so the receivers aren't swamped.  You can attach observers which manipulate the incoming data (see the inline emoji writer in the examples folder), or de-duplicate or merge events (which is very useful if you want to prevent flicker and unnecessary redraws in your user-interface).  And observers can republish events to different streams - we could take events on one stream and send those same events, or a subset, to a web-socket.
+Simple filtering:
+```ruby
+require "plumbing"
 
+@source = Plumbing::Pipe.start
+
+@filter = Plumbing::Filter.start source: @source, accepts: %w[important urgent]
+
+@observer = @filter.add_observer do |event|
+  puts event.type
+end
+
+@source.notify "important", message: "ALERT! ALERT!"
+# => "important"
+
+@source.notify "unimportant", message: "Nothing to see here"
+# => <no output>
+```
+
+Custom filtering:
+```ruby
+require "plumbing"
+
+class EveryThirdEvent < Plumbing::CustomFilter
+  def initialize source:
+    super source: source
+    @events = []
+  end
+
+  def received event
+    @events << event
+    if @events.count >= 2
+      @events.clear
+      self << event
+    end
+  end
+end
+
+@source = Plumbing::Pipe.start
+
+@filter = EveryThirdEvent.new(source :@source)
+
+@observer = @filter.add_observer do |event|
+  puts event.type
+end
+
+1.upto 10 do |i|
+  @source.notify i.to_s
+end
+# => "3"
+# => "6"
+# => "9"
+```
+
+Joining multiple sources
+```ruby
+require "plumbing"
+
+@first_source = Plumbing::Pipe.start
+@second_source = Plumbing::Pipe.start
+
+@join = Plumbing::Junction.start @first_source, @second_source
+
+@observer = @join.add_observer do |event|
+  puts event.type
+end
+
+@first_source.notify "one"
+# => "one"
+@second_source.notify "two"
+# => "two"
+```
+
+## Plumbing::Chain - a chain of method calls
+
+### Usage:
+
+A simple chain of events
+```ruby
+require "plumbing"
+
+class ContrivedExample < Plumbing::Chain
+  step :validate_is_a_string
+  step :validate_does_not_say_boom
+  step :downcase
+
+  private
+
+  def validate_is_a_string input
+    raise "Not a string" unless input.is_a? String
+    input
+  end
+
+  def validate_does_not_say_boom input
+    raise "This says BOOM which is not allowed" if input == "BOOM"
+    input
+  end
+
+  def downcase input
+    input.downcase
+  end
+end
+
+ContrivedExample.new.call("HELLO").then(result) do
+  puts result
+end
+# => result
+
+ContrivedExample.new.call("BOOM").then(result) do
+  puts result
+end.fail(error) do
+  puts error.class
+end
+# => RuntimeError
+
+```
 
 ## Installation
-
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
 
 Install the gem and add to the application's Gemfile by executing:
 

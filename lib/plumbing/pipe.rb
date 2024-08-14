@@ -4,7 +4,7 @@ module Plumbing
   # An implementation of a pipe that uses Fibers
   class Pipe < BlockedPipe
     def initialize
-      super()
+      super
       @fiber = Fiber.new do |initial_event|
         start_run_loop initial_event
       end

@@ -7,7 +7,7 @@ module Plumbing
     module Types
       include Dry::Types()
       Source = Instance(Plumbing::BlockedPipe)
-      EventTypes = Array.of(Plumbing::Event::Types::EventType)
+      EventTypes = Array.of(Plumbing::Event::Types::Type)
     end
 
     # Chain this pipe to the source pipe

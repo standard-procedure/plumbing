@@ -11,7 +11,7 @@ module Plumbing
       end
 
       def initialize
-        super()
+        super
         @pipe = Ractor.new(self) do |instance|
           while (message = Ractor.receive) != :shutdown
             case message.first
@@ -35,7 +35,7 @@ module Plumbing
 
       def shutdown
         @pipe << :shutdown
-        super()
+        super
       end
 
       protected
