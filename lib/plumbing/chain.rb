@@ -1,27 +1,45 @@
 module Plumbing
   # A chain of operations that are executed in sequence
   class Chain
-    def call params
-      self.class._call params, self
+    def call input
+      self.class._call input, self
     end
 
     class << self
+      def perform method, &implementation
+        implementation ||= ->(input, instance) { instance.send(method, input) }
+        operations << implementation
+      end
+
+      def embed method, class_name
+        implementation = ->(input, instance) { const_get(class_name).new.call(input) }
+        operations << implementation
+      end
+
+      def execute method
+        implementation ||= ->(input, instance) do
+          instance.send(method, input)
+          input
+        end
+        operations << implementation
+      end
+
       def pre_condition name, &validator
         pre_conditions[name.to_sym] = validator
       end
 
-      def perform method, &implementation
-        implementation ||= ->(params, instance) { instance.send(method, params) }
-        operations << implementation
+      def validate_with contract_class
+        @validation_contract = contract_class
       end
 
       def post_condition name, &validator
         post_conditions[name.to_sym] = validator
       end
 
-      def _call params, instance
-        validate_preconditions_for params
-        result = params
+      def _call input, instance
+        validate_contract_for input
+        validate_preconditions_for input
+        result = input
         operations.each do |operation|
           result = operation.call(result, instance)
         end
@@ -41,6 +59,13 @@ module Plumbing
 
       def post_conditions
         @post_conditions ||= {}
+      end
+
+      def validate_contract_for input
+        return true if @validation_contract.nil?
+        result = const_get(@validation_contract).new.call(input)
+        raise PreConditionError, result.errors.to_h.to_yaml unless result.success?
+        input
       end
 
       def validate_preconditions_for input

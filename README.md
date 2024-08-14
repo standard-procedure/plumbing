@@ -99,7 +99,15 @@ end
 
 Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.
 
-You can define pre-conditions (which validate the inputs supplied) or post-conditions (which validate the output).  
+Use `perform` to define a step that takes some input and returns a different output.  
+Use `execute` to define a step that takes some input and returns that same input.  
+Use `embed` to define a step that uses another `Plumbing::Chain` class to generate the output.  
+
+If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  
+
+If you don't want to use dry-validation, you can instead define a `pre_condition` - there's nothing to stop you defining a contract as well as pre_conditions (with the contract being verified first).  
+
+You can also verify that the output generated is as expected by defining a `post_condition`.  
 
 ### Usage:
 
@@ -107,11 +115,12 @@ You can define pre-conditions (which validate the inputs supplied) or post-condi
 require "plumbing"
 class BuildSequence < Plumbing::Chain 
   pre_condition :must_be_an_array do |input| 
+    # you could replace this with a `validate` definition (using a Dry::Validation::Contract) if you prefer
     input.is_a? Array 
   end
 
   post_condition :must_have_three_elements do |output|
-    # yes, this is a stupid post-condition but it shows how you can ensure your outputs are valid
+    # yes, this is a stupid post-condition but 🤷🏾‍♂️
     output.length == 3
   end
 

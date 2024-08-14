@@ -1,3 +1,7 @@
+## [0.2.0] - 2024-08-14
+
+ - Added optional Dry::Validation support
+
 ## [0.1.2] - 2024-08-14
 
  - Removed dependencies
