@@ -33,10 +33,18 @@ RSpec.describe Plumbing::Concurrent::Pipe do
     expect { @pipe.add_observer @observer }.to raise_error(Plumbing::InvalidObserver)
   end
 
-  it "allows Ractor observers" do
+  it "adds an observer" do
     @pipe = described_class.start
 
-    expect { @pipe.add_observer(Object.new) }.to raise_error(Plumbing::InvalidObserver)
+    @ractor = Ractor.new do
+      Ractor.yield Ractor.receive
+    end
+
+    @pipe.add_observer @ractor
+    expect(@pipe.is_observer?(@ractor)).to eq true
+
+    @pipe.notify "first_event"
+    expect(@ractor.take.type).to eq "first_event"
   end
 
   it "removes an observer" do
@@ -47,9 +55,7 @@ RSpec.describe Plumbing::Concurrent::Pipe do
       Ractor.yield Ractor.receive
     end
     @pipe.add_observer @ractor
-
-    @pipe.notify "first_event"
-    expect(@ractor.take.type).to eq "first_event"
+    expect(@pipe.is_observer?(@ractor)).to eq true
 
     @pipe.remove_observer @ractor
     expect(@pipe.is_observer?(@ractor)).to eq false

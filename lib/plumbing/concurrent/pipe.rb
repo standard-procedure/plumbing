@@ -12,10 +12,11 @@ module Plumbing
 
       def initialize
         super
-        @pipe = Ractor.new(self) do |instance|
+        @queue = Ractor.new(self) do |instance|
           while (message = Ractor.receive) != :shutdown
             case message.first
             when :add_observer then instance.send :add_observing_ractor, message.last
+            when :is_observer? then Ractor.yield(instance.send(:is_observing_ractor?, message.last))
             when :remove_observer then instance.send :remove_observing_ractor, message.last
             else instance.send :dispatch, message.last
             end
@@ -25,20 +26,29 @@ module Plumbing
 
       def add_observer ractor = nil, &block
         Plumbing::Concurrent::Pipe::Types::Observer[ractor].tap do |observer|
-          @pipe << [:add_observer, observer]
+          @queue << [:add_observer, observer]
         end
       end
 
+      def remove_observer ractor = nil, &block
+        @queue << [:remove_observer, ractor]
+      end
+
+      def is_observer? ractor
+        @queue << [:is_observer?, ractor]
+        @queue.take
+      end
+
       def << event
-        @pipe << [:dispatch, Plumbing::BlockedPipe::Types::Event[event]]
+        @queue << [:dispatch, Plumbing::BlockedPipe::Types::Event[event]]
       end
 
       def shutdown
-        @pipe << :shutdown
+        @queue << :shutdown
         super
       end
 
-      protected
+      private
 
       def dispatch event
         @observers.each do |observer|
@@ -46,10 +56,12 @@ module Plumbing
         end
       end
 
-      private
-
       def add_observing_ractor observer
         @observers << observer
+      end
+
+      def is_observing_ractor? observer
+        @observers.include? observer
       end
 
       def remove_observing_ractor observer
