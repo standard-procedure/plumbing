@@ -10,12 +10,16 @@ require "rspec/expectations"
 RSpec::Matchers.define :become_equal_to do
   match do |expected|
     counter = 0
-    result = false
-    while (counter < 50) && (result == false)
-      result = true if block_arg.call == expected
+    matched = false
+    while (counter < 50) && (matched == false)
+      matched = true if (@result = block_arg.call) == expected
       sleep 0.1
       counter += 1
     end
-    result
+    matched
+  end
+
+  failure_message do |expected|
+    "expected block to return #{expected} but was #{@result} after timeout expired"
   end
 end
