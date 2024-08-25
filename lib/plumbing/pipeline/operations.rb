@@ -1,14 +1,8 @@
 module Plumbing
   class Pipeline
     module Operations
-      def perform method, &implementation
-        implementation ||= ->(input, instance) { instance.send(method, input) }
-        operations << implementation
-      end
-
-      def embed method, class_name
-        implementation = ->(input, instance) { const_get(class_name).new.call(input) }
-        operations << implementation
+      def perform method, using: nil, &implementation
+        using.nil? ? perform_internal(method, &implementation) : perform_external(method, using)
       end
 
       def execute method
@@ -34,6 +28,17 @@ module Plumbing
 
       def operations
         @operations ||= []
+      end
+
+      def perform_internal method, &implementation
+        implementation ||= ->(input, instance) { instance.send(method, input) }
+        operations << implementation
+      end
+
+      def perform_external method, class_or_class_name
+        external_class = class_or_class_name.is_a?(String) ? const_get(class_or_class_name) : class_or_class_name
+        implementation = ->(input, instance) { external_class.new.call(input) }
+        operations << implementation
       end
     end
   end

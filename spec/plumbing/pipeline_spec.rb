@@ -44,36 +44,70 @@ RSpec.describe Plumbing::Pipeline do
     expect(Sequence.new.call([])).to eq ["first", "second", "third"]
   end
 
-  it "embeds an external command within a sequence of commands" do
-    # standard:disable Lint/ConstantDefinitionInBlock
-    class Inner < Plumbing::Pipeline
-      perform :embedded_step
+  context "embedding an external command" do
+    it "specifies the command with a string" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class InnerByName < Plumbing::Pipeline
+        perform :embedded_step
 
-      private
+        private
 
-      def embedded_step value = []
-        value << "embedded"
+        def embedded_step value = []
+          value << "embedded"
+        end
       end
+
+      class OuterByName < Plumbing::Pipeline
+        perform :first_step
+        perform :second_step, using: "InnerByName"
+        perform :third_step
+
+        private
+
+        def first_step value = []
+          value << "first"
+        end
+
+        def third_step value = []
+          value << "third"
+        end
+      end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      expect(OuterByName.new.call([])).to eq ["first", "embedded", "third"]
     end
 
-    class Outer < Plumbing::Pipeline
-      perform :first_step
-      embed :second_step, "Inner"
-      perform :third_step
+    it "specifies the command with a class" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class InnerByClass < Plumbing::Pipeline
+        perform :embedded_step
 
-      private
+        private
 
-      def first_step value = []
-        value << "first"
+        def embedded_step value = []
+          value << "embedded"
+        end
       end
 
-      def third_step value = []
-        value << "third"
+      class OuterByClass < Plumbing::Pipeline
+        perform :first_step
+        perform :second_step, using: InnerByClass
+        perform :third_step
+
+        private
+
+        def first_step value = []
+          value << "first"
+        end
+
+        def third_step value = []
+          value << "third"
+        end
       end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      expect(OuterByClass.new.call([])).to eq ["first", "embedded", "third"]
     end
-    # standard:enable Lint/ConstantDefinitionInBlock
-
-    expect(Outer.new.call([])).to eq ["first", "embedded", "third"]
   end
 
   it "defines an operation that does something but returns the provided input untouched" do
