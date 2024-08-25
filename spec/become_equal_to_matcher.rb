@@ -1,6 +1,6 @@
 require "rspec/expectations"
 
-# Custom matcher that repeatedly evaluates the block until it matches the expected value or 10 seconds have elapsed
+# Custom matcher that repeatedly evaluates the block until it matches the expected value or 5 seconds have elapsed
 #
 # This allows asynchronous operations to be tested in a synchronous manner with a timeout
 #
@@ -11,7 +11,7 @@ RSpec::Matchers.define :become_equal_to do
   match do |expected|
     counter = 0
     result = false
-    while (counter < 100) && (result == false)
+    while (counter < 50) && (result == false)
       result = true if block_arg.call == expected
       sleep 0.1
       counter += 1

@@ -85,9 +85,9 @@ require "plumbing"
 @first_source = Plumbing::Pipe.start
 @second_source = Plumbing::Pipe.start
 
-@join = Plumbing::Junction.start @first_source, @second_source
+@junction = Plumbing::Junction.start @first_source, @second_source
 
-@observer = @join.add_observer do |event|
+@observer = @junction.add_observer do |event|
   puts event.type
 end
 

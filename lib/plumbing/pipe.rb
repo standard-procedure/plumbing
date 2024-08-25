@@ -58,8 +58,8 @@ module Plumbing
     # Start this pipe
     # Subclasses may override this method to add any implementation specific details.
     # By default any supplied parameters are called to the subclass' `initialize` method
-    def self.start(**, &)
-      new(**, &)
+    def self.start(*, **, &)
+      new(*, **, &)
     end
 
     protected

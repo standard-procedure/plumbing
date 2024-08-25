@@ -14,6 +14,6 @@ module Plumbing
   # Error raised because an invalid observer was registered
   class InvalidObserver < Error; end
 
-  # Error raised because a BlockedPipe was used instead of an actual implementation of a Pipe
-  class PipeIsBlocked < Plumbing::Error; end
+  # Error raised because a Pipe was connected to a non-Pipe
+  class InvalidSource < Plumbing::Error; end
 end
