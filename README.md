@@ -2,11 +2,11 @@
 
 ## Plumbing::Pipeline - transform data through a pipeline
 
-Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.
+Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.  [Unix pipes](https://en.wikipedia.org/wiki/Pipeline_(Unix)) in Ruby.  
 
 Use `perform` to define a step that takes some input and returns a different output.  
-Use `execute` to define a step that takes some input and returns that same input.  
-Use `embed` to define a step that uses another `Plumbing::Chain` class to generate the output.  
+  Specify `using` to re-use an existing `Plumbing::Pipeline` as a step within this pipeline.  
+Use `execute` to define a step that takes some input, performs an action but passes the input, unchanged, to the next step.  
 
 If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  
 
@@ -63,7 +63,9 @@ BuildSequence.new.call ["extra element"]
 
 [Observers](https://ruby-doc.org/3.3.0/stdlibs/observer/Observable.html) in Ruby are a pattern where objects (observers) register their interest in another object (the observable).  This pattern is common throughout programming languages (event listeners in Javascript, the dependency protocol in [Smalltalk](https://en.wikipedia.org/wiki/Smalltalk)).
 
-[Plumbing::Pipe](lib/plumbing/pipe.rb) makes observers "composable".  Instead of simply registering for notifications from the observable, we observe a stream of notifications, which could be produced by multiple observables, all being sent through the same pipe.  We can then chain observers together, composing a "pipeline" of operations from a single source of events.
+[Plumbing::Pipe](lib/plumbing/pipe.rb) makes observers "composable".  Instead of simply registering for notifications from the observable, we observe a stream of notifications, which could be produced by multiple observables, all being sent through the same pipe.  We can then chain observers and observables together, filtering and routing events to different places as required.  
+
+By default, pipes work synchronously, using a [Plumbing::EventDispatcher](lib/plumbing/event_dispatcher.rb) but if asynchronous events are needed, that can be swapped out for a [fiber-based implementation](lib/plumbing/event_dispatcher/fiber.rb).  (Threads and/or Ractor-based implementations will probably be coming soon).
 
 ### Usage
 
@@ -168,7 +170,7 @@ require "async"
 
 @junction = Plumbing::Junction.start @first_source, @second_source, dispatcher: Plumbing::EventDispatcher::Fiber.new
 
-@filter = Plumbing::Filter.start source: @junction, dispatcher: Plumbing::EventDispatcher::Fibernew do |event|
+@filter = Plumbing::Filter.start source: @junction, dispatcher: Plumbing::EventDispatcher::Fiber.new do |event|
   %w[one-one two-two].include? event.type 
 end
 
@@ -183,7 +185,7 @@ end
 
 ## Plumbing::RubberDuck - duck types and type-casts
 
-Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming) specifying which messages you expect to be able to send.  Then cast an object into that type, which first tests that the object can respond to those messages and limits you to sending those messages and no others.  
+Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming)) specifying which messages you expect to be able to send.  Then cast an object into that type, which first tests that the object can respond to those messages and then builds a proxy that responds to just those messages and no others (so no-one can abuse the specific type-casting you have specified).  However, if you take one of these proxies, you can safely re-cast it as another type (as long as the original target object is castable).
 
 
 ### Usage 
