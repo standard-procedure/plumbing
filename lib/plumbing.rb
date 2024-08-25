@@ -8,6 +8,7 @@ require_relative "plumbing/pipe"
 require_relative "plumbing/filter"
 require_relative "plumbing/junction"
 require_relative "plumbing/pipeline"
+require_relative "plumbing/rubber_duck"
 
 module Plumbing
 end

@@ -1,3 +1,7 @@
+## [0.2.2] - 2024-08-25
+
+ - Added Plumbing::RubberDuck
+
 ## [0.2.1] - 2024-08-25
 
  - Split the Pipe implementation between the Pipe and EventDispatcher

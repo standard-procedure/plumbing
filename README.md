@@ -58,6 +58,7 @@ BuildSequence.new.call ["extra element"]
 # => Plumbing::PostconditionError("must_have_three_elements")
 ```
 
+
 ## Plumbing::Pipe - a composable observer
 
 [Observers](https://ruby-doc.org/3.3.0/stdlibs/observer/Observable.html) in Ruby are a pattern where objects (observers) register their interest in another object (the observable).  This pattern is common throughout programming languages (event listeners in Javascript, the dependency protocol in [Smalltalk](https://en.wikipedia.org/wiki/Smalltalk)).
@@ -180,6 +181,37 @@ end
 ```
 
 
+## Plumbing::RubberDuck - duck types and type-casts
+
+Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming) specifying which messages you expect to be able to send.  Then cast an object into that type, which first tests that the object can respond to those messages and limits you to sending those messages and no others.  
+
+
+### Usage 
+
+Define your interface (Person in this example), then cast your objects (instances of PersonData and CarData).  
+
+```ruby
+require "plumbing"
+
+Person = Plumbing::RubberDuck.define :first_name, :last_name, :email 
+
+PersonData = Struct.new(:first_name, :last_name, :email, :favourite_food)
+CarData = Struct.new(:make, :model, :colour)
+
+@porsche_911 = CarData.new "Porsche", "911", "black"
+@person = @porsche_911.as Person
+# => Raises a TypeError 
+
+@alice = PersonData.new "Alice", "Aardvark", "alice@example.com", "Ice cream"
+@person = @alice.as Person
+@person.first_name
+# => "Alice"
+@person.email 
+# => "alice@example.com"
+@person.favourite_food
+# => NoMethodError - even though :favourite_food is a field in PersonData, it is not included in the definition of Person so cannot be accessed through the RubberDuck type
+```
+
 ## Installation
 
 Install the gem and add to the application's Gemfile by executing:
@@ -193,7 +225,6 @@ Then:
 ```ruby
 require 'plumbing'
 ```
-
 
 ## Development
 
