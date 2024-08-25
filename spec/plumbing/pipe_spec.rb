@@ -3,14 +3,22 @@ require "spec_helper"
 RSpec.describe Plumbing::Pipe do
   it "pushes an event into the pipe" do
     @pipe = described_class.start
+    @event = Plumbing::Event.new type: "test_event", data: {test: "event"}
 
-    expect { @pipe.notify "test_event" }.to_not raise_error
+    expect { @pipe << @event }.to_not raise_error
   end
 
   it "only allows events to be pushed" do
     @pipe = described_class.start
+    @event = Object.new
 
     expect { @pipe << @event }.to raise_error(Plumbing::InvalidEvent)
+  end
+
+  it "creates an event and pushes it into the pipe" do
+    @pipe = described_class.start
+
+    expect { @pipe.notify "test_event", some: "data" }.to_not raise_error
   end
 
   it "adds a block observer" do
@@ -63,13 +71,15 @@ RSpec.describe Plumbing::Pipe do
     expect(@results).to eq [@first_event]
   end
 
-  it "handles exceptions raised by observers" do
+  it "ensures all observers are notified even if an observer raises an exception" do
     @pipe = described_class.start
+
+    @results = []
 
     @failing_observer = @pipe.add_observer do |event|
       raise "Failed processing #{event.type}"
     end
-    @results = []
+
     @working_observer = @pipe.add_observer do |event|
       @results << event
     end
