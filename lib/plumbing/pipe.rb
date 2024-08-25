@@ -1,12 +1,11 @@
 module Plumbing
   # A basic pipe
   class Pipe
-    require_relative "pipe/synchronous_dispatcher"
+    require_relative "dispatcher"
 
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
     def initialize dispatcher: nil
-      @observers = []
-      @dispatcher = dispatcher || SynchronousDispatcher.new
+      @dispatcher = dispatcher || Dispatcher.new
     end
 
     # Push an event into the pipe
@@ -30,25 +29,22 @@ module Plumbing
     # @param &block [Block] (optional)
     # @return an object representing this observer (dependent upon the implementation of the pipe itself)
     # Either a `callable` or a `block` must be supplied.  If the latter, it is converted to a [Proc]
-    def add_observer observer = nil, &block
-      observer ||= block.to_proc
-      raise Plumbing::InvalidObserver.new "observer_does_not_respond_to_call" unless observer.respond_to? :call
-      @observers << observer
-      observer
+    def add_observer(observer = nil, &)
+      @dispatcher.add_observer(observer, &)
     end
 
     # Remove an observer from this pipe
     # @param observer
     # This removes the given observer from this pipe.  The observer should have previously been returned by #add_observer and is implementation-specific
     def remove_observer observer
-      @observers.delete observer
+      @dispatcher.remove_observer observer
     end
 
     # Test whether the given observer is observing this pipe
     # @param observer
     # @return [boolean]
     def is_observer? observer
-      @observers.include? observer
+      @dispatcher.is_observer? observer
     end
 
     # Close this pipe and perform any cleanup.
@@ -72,7 +68,7 @@ module Plumbing
     # Enumerates all observers and `calls` them with this event
     # Discards any errors raised by the observer so that all observers will be successfully notified
     def dispatch event
-      @dispatcher.dispatch event, observers: @observers
+      @dispatcher.dispatch event
     end
   end
 end
