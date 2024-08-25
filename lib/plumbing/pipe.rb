@@ -4,9 +4,9 @@ module Plumbing
     require_relative "pipe/synchronous_dispatcher"
 
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
-    def initialize dispatcher: SynchronousDispatcher.new
+    def initialize dispatcher: nil
       @observers = []
-      @dispatcher = dispatcher
+      @dispatcher = dispatcher || SynchronousDispatcher.new
     end
 
     # Push an event into the pipe

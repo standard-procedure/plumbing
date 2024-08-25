@@ -1,5 +1,63 @@
 # Plumbing
 
+## Plumbing::Pipeline - transform data through a pipeline
+
+Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.
+
+Use `perform` to define a step that takes some input and returns a different output.  
+Use `execute` to define a step that takes some input and returns that same input.  
+Use `embed` to define a step that uses another `Plumbing::Chain` class to generate the output.  
+
+If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  
+
+If you don't want to use dry-validation, you can instead define a `pre_condition` (although there's nothing to stop you defining a contract as well as pre_conditions - with the contract being verified first).  
+
+You can also verify that the output generated is as expected by defining a `post_condition`.  
+
+### Usage:
+
+```ruby
+require "plumbing"
+class BuildSequence < Plumbing::Pipeline 
+  pre_condition :must_be_an_array do |input| 
+    # you could replace this with a `validate` definition (using a Dry::Validation::Contract) if you prefer
+    input.is_a? Array 
+  end
+
+  post_condition :must_have_three_elements do |output|
+    # this is a stupid post-condition but 🤷🏾‍♂️, this is just an example
+    output.length == 3
+  end
+
+  perform :add_first
+  perform :add_second
+  perform :add_third
+
+  private 
+
+  def add_first input 
+    input << "first"
+  end
+
+  def add_second input 
+    input << "second" 
+  end
+
+  def add_third input 
+    input << "third"
+  end
+end
+
+BuildSequence.new.call []
+# => ["first", "second", "third"]
+
+BuildSequence.new.call 1
+# => Plumbing::PreconditionError("must_be_an_array")
+
+BuildSequence.new.call ["extra element"]
+# => Plumbing::PostconditionError("must_have_three_elements")
+```
+
 ## Plumbing::Pipe - a composable observer
 
 [Observers](https://ruby-doc.org/3.3.0/stdlibs/observer/Observable.html) in Ruby are a pattern where objects (observers) register their interest in another object (the observable).  This pattern is common throughout programming languages (event listeners in Javascript, the dependency protocol in [Smalltalk](https://en.wikipedia.org/wiki/Smalltalk)).
@@ -97,63 +155,30 @@ end
 # => "two"
 ```
 
-## Plumbing::Pipeline - transform data through a pipeline
-
-Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.
-
-Use `perform` to define a step that takes some input and returns a different output.  
-Use `execute` to define a step that takes some input and returns that same input.  
-Use `embed` to define a step that uses another `Plumbing::Chain` class to generate the output.  
-
-If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  
-
-If you don't want to use dry-validation, you can instead define a `pre_condition` (although there's nothing to stop you defining a contract as well as pre_conditions - with the contract being verified first).  
-
-You can also verify that the output generated is as expected by defining a `post_condition`.  
-
-### Usage:
-
+Dispatching events asynchronously (using Fibers)
 ```ruby
 require "plumbing"
-class BuildSequence < Plumbing::Pipeline 
-  pre_condition :must_be_an_array do |input| 
-    # you could replace this with a `validate` definition (using a Dry::Validation::Contract) if you prefer
-    input.is_a? Array 
-  end
+require "plumbing/pipe/fiber_dispatcher"
+require "async"
 
-  post_condition :must_have_three_elements do |output|
-    # this is a stupid post-condition but 🤷🏾‍♂️, this is just an example
-    output.length == 3
-  end
+# `limit` controls how many fibers can dispatch events concurrently - the default is 4
+@first_source = Plumbing::Pipe.start dispatcher: Plumbing::Pipe::FiberDispatcher.new limit: 8
+@second_source = Plumbing::Pipe.start dispatcher: Plumbing::Pipe::FiberDispatcher.new limit: 2
 
-  perform :add_first
-  perform :add_second
-  perform :add_third
+@junction = Plumbing::Junction.start @first_source, @second_source, dispatcher: Plumbing::Pipe::FiberDispatcher.new
 
-  private 
-
-  def add_first input 
-    input << "first"
-  end
-
-  def add_second input 
-    input << "second" 
-  end
-
-  def add_third input 
-    input << "third"
-  end
+@filter = Plumbing::Filter.start source: @junction, dispatcher: Plumbing::Pipe::FiberDispatcher.new do |event|
+  %w[one-one two-two].include? event.type 
 end
 
-BuildSequence.new.call []
-# => ["first", "second", "third"]
-
-BuildSequence.new.call 1
-# => Plumbing::PreconditionError("must_be_an_array")
-
-BuildSequence.new.call ["extra element"]
-# => Plumbing::PostconditionError("must_have_three_elements")
+Sync do 
+  @first_source.notify "one-one"
+  @first_source.notify "one-two"
+  @second_source.notify "two-one"
+  @second_source.notify "two-two"
+end
 ```
+
 
 ## Installation
 
