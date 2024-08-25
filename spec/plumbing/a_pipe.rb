@@ -1,26 +1,26 @@
-RSpec.shared_examples "a pipe" do
+RSpec.shared_examples "a pipe" do |dispatcher|
   it "pushes an event into the pipe" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
     @event = Plumbing::Event.new type: "test_event", data: {test: "event"}
 
     expect { @pipe << @event }.to_not raise_error
   end
 
   it "only allows events to be pushed" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
     @event = Object.new
 
     expect { @pipe << @event }.to raise_error(Plumbing::InvalidEvent)
   end
 
   it "creates an event and pushes it into the pipe" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     expect { @pipe.notify "test_event", some: "data" }.to_not raise_error
   end
 
   it "adds a block observer" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     @observer = @pipe.add_observer do |event|
       # do something
@@ -30,7 +30,7 @@ RSpec.shared_examples "a pipe" do
   end
 
   it "adds a callable observer" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     @results = []
     @proc = ->(event) { @results << event }
@@ -40,13 +40,13 @@ RSpec.shared_examples "a pipe" do
   end
 
   it "does not allow an observer without a #call method" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     expect { @pipe.add_observer(Object.new) }.to raise_error(Plumbing::InvalidObserver)
   end
 
   it "removes an observer" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     @results = []
     @proc = ->(event) { @results << event }
@@ -57,7 +57,7 @@ RSpec.shared_examples "a pipe" do
   end
 
   it "notifies block observers" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     @results = []
     @observer = @pipe.add_observer do |event|
@@ -72,7 +72,7 @@ RSpec.shared_examples "a pipe" do
   end
 
   it "notifies callable observers" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     @results = []
     @observer = ->(event) { @results << event }
@@ -86,7 +86,7 @@ RSpec.shared_examples "a pipe" do
   end
 
   it "ensures all observers are notified even if an observer raises an exception" do
-    @pipe = described_class.start
+    @pipe = described_class.start dispatcher: dispatcher
 
     @results = []
 

@@ -1,9 +1,12 @@
 module Plumbing
   # A basic pipe
   class Pipe
+    require_relative "pipe/synchronous_dispatcher"
+
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
-    def initialize
+    def initialize dispatcher: SynchronousDispatcher.new
       @observers = []
+      @dispatcher = dispatcher
     end
 
     # Push an event into the pipe
@@ -69,12 +72,7 @@ module Plumbing
     # Enumerates all observers and `calls` them with this event
     # Discards any errors raised by the observer so that all observers will be successfully notified
     def dispatch event
-      @observers.collect do |observer|
-        observer.call event
-      rescue => ex
-        puts ex
-        ex
-      end
+      @dispatcher.dispatch event, observers: @observers
     end
   end
 end
