@@ -28,7 +28,9 @@ require "plumbing"
 
 @source = Plumbing::Pipe.start
 
-@filter = Plumbing::Filter.start source: @source, accepts: %w[important urgent]
+@filter = Plumbing::Filter.start source: @source do |event|
+  %w[important urgent].include? event.type 
+end
 
 @observer = @filter.add_observer do |event|
   puts event.type
