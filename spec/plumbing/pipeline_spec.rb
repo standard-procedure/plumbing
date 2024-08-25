@@ -1,10 +1,10 @@
 require "spec_helper"
 require "dry/validation"
 
-RSpec.describe Plumbing::Chain do
+RSpec.describe Plumbing::Pipeline do
   it "defines a single operation that returns a value based upon the input parameters" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Addition < Plumbing::Chain
+    class Addition < Plumbing::Pipeline
       perform :addition
 
       private
@@ -20,7 +20,7 @@ RSpec.describe Plumbing::Chain do
 
   it "defines a sequence of commands that are executed in order" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Sequence < Plumbing::Chain
+    class Sequence < Plumbing::Pipeline
       perform :first_step
       perform :second_step
       perform :third_step
@@ -46,7 +46,7 @@ RSpec.describe Plumbing::Chain do
 
   it "embeds an external command within a sequence of commands" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Inner < Plumbing::Chain
+    class Inner < Plumbing::Pipeline
       perform :embedded_step
 
       private
@@ -56,7 +56,7 @@ RSpec.describe Plumbing::Chain do
       end
     end
 
-    class Outer < Plumbing::Chain
+    class Outer < Plumbing::Pipeline
       perform :first_step
       embed :second_step, "Inner"
       perform :third_step
@@ -78,7 +78,7 @@ RSpec.describe Plumbing::Chain do
 
   it "defines an operation that does something but returns the provided input untouched" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Passthrough < Plumbing::Chain
+    class Passthrough < Plumbing::Pipeline
       execute :external_operation
 
       private
@@ -95,7 +95,7 @@ RSpec.describe Plumbing::Chain do
 
   it "raises a PreconditionError if the input fails the precondition test" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class PreConditionCheck < Plumbing::Chain
+    class PreConditionCheck < Plumbing::Pipeline
       pre_condition :has_first_key do |input|
         input.key?(:first)
       end
@@ -120,7 +120,7 @@ RSpec.describe Plumbing::Chain do
 
   it "raises a PreconditionError if the input fails to validate against a Dry::Validation::Contract" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Validated < Plumbing::Chain
+    class Validated < Plumbing::Pipeline
       validate_with "Validated::Input"
       perform :say_hello
 
@@ -149,7 +149,7 @@ RSpec.describe Plumbing::Chain do
 
   it "raises a PostconditionError if the outputs fail the postcondition test" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class PostConditionCheck < Plumbing::Chain
+    class PostConditionCheck < Plumbing::Pipeline
       post_condition :should_be_integer do |result|
         result.instance_of? Integer
       end

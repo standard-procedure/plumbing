@@ -1,5 +1,5 @@
 module Plumbing
-  class Chain
+  class Pipeline
     module Contracts
       def pre_condition name, &validator
         pre_conditions[name.to_sym] = validator

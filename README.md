@@ -95,7 +95,7 @@ end
 # => "two"
 ```
 
-## Plumbing::Chain - a chain of operations that occur in sequence
+## Plumbing::Pipeline - transform data through a pipeline
 
 Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.
 
@@ -105,7 +105,7 @@ Use `embed` to define a step that uses another `Plumbing::Chain` class to genera
 
 If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  
 
-If you don't want to use dry-validation, you can instead define a `pre_condition` - there's nothing to stop you defining a contract as well as pre_conditions (with the contract being verified first).  
+If you don't want to use dry-validation, you can instead define a `pre_condition` (although there's nothing to stop you defining a contract as well as pre_conditions - with the contract being verified first).  
 
 You can also verify that the output generated is as expected by defining a `post_condition`.  
 
@@ -113,14 +113,14 @@ You can also verify that the output generated is as expected by defining a `post
 
 ```ruby
 require "plumbing"
-class BuildSequence < Plumbing::Chain 
+class BuildSequence < Plumbing::Pipeline 
   pre_condition :must_be_an_array do |input| 
     # you could replace this with a `validate` definition (using a Dry::Validation::Contract) if you prefer
     input.is_a? Array 
   end
 
   post_condition :must_have_three_elements do |output|
-    # yes, this is a stupid post-condition but 🤷🏾‍♂️
+    # this is a stupid post-condition but 🤷🏾‍♂️, this is just an example
     output.length == 3
   end
 

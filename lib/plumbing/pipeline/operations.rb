@@ -1,5 +1,5 @@
 module Plumbing
-  class Chain
+  class Pipeline
     module Operations
       def perform method, &implementation
         implementation ||= ->(input, instance) { instance.send(method, input) }
