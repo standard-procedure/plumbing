@@ -55,6 +55,18 @@ RSpec.describe Plumbing::RubberDuck do
     expect(@proxy.as(@duck_type)).to eq @proxy
   end
 
+  it "allows rubber ducks to be expanded and cast to other types" do
+    @quackers = described_class.define :quack
+    @swimming_bird = described_class.define :swim, :fly
+    @duck = Duck.new
+
+    @swimmer = @duck.as @swimming_bird
+    @quacker = @swimmer.as @quackers
+
+    expect(@swimmer).to respond_to :swim
+    expect(@quacker).to respond_to :quack
+  end
+
   it "raises a TypeError if the class responds to the given methods" do
     cow_type = described_class.define :moo, :chew
     duck = Duck.new

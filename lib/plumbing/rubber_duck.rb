@@ -30,7 +30,7 @@ module Plumbing
     end
 
     def build_proxy_for object
-      proxy_class_for(object).new(verify(object))
+      proxy_class_for(object).new(verify(object), self)
     end
 
     def proxy_class_for object
