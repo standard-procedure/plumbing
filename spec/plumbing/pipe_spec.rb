@@ -4,19 +4,19 @@ require "async"
 
 RSpec.describe Plumbing::Pipe do
   context "synchronously dispatching events" do
-    it_behaves_like "a pipe", -> { Plumbing::Dispatcher.new }
+    it_behaves_like "a pipe", -> { Plumbing::EventDispatcher.new }
   end
 
   context "dispatching events with fibers" do
-    require_relative "../../lib/plumbing/dispatcher/fiber"
+    require_relative "../../lib/plumbing/event_dispatcher/fiber"
     around :example do |example|
       Sync(&example)
     end
 
-    it_behaves_like "a pipe", -> { Plumbing::Dispatcher::Fiber.new }
+    it_behaves_like "a pipe", -> { Plumbing::EventDispatcher::Fiber.new }
 
     it "debounces duplicate events" do
-      @dispatcher = Plumbing::Dispatcher::Fiber.new
+      @dispatcher = Plumbing::EventDispatcher::Fiber.new
       @pipe = described_class.start dispatcher: @dispatcher
       @first_event = Plumbing::Event.new type: "first", data: {test: "event"}
       @second_event = Plumbing::Event.new type: "second", data: {test: "event"}

@@ -2,8 +2,8 @@ require "async/task"
 require "async/semaphore"
 
 module Plumbing
-  class Dispatcher
-    class Fiber < Dispatcher
+  class EventDispatcher
+    class Fiber < EventDispatcher
       def initialize limit: 4
         super()
         @semaphore = Async::Semaphore.new(limit)
@@ -25,6 +25,15 @@ module Plumbing
         dispatch_events
       end
 
+      def queue_size
+        @queue.size
+      end
+
+      def shutdown
+        super
+        @queue.clear
+      end
+
       private
 
       def dispatch_events
@@ -32,14 +41,18 @@ module Plumbing
           events = @queue.dup
           @queue.clear
           events.each do |event|
-            @observers.collect do |observer|
-              task.async do
-                observer.call event
-              rescue => ex
-                puts ex
-                ex
-              end
-            end
+            dispatch_event event, task
+          end
+        end
+      end
+
+      def dispatch_event event, task
+        @observers.collect do |observer|
+          task.async do
+            observer.call event
+          rescue => ex
+            puts ex
+            ex
           end
         end
       end

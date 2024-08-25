@@ -1,5 +1,5 @@
 module Plumbing
-  class Dispatcher
+  class EventDispatcher
     def initialize observers: []
       @observers = observers
     end
@@ -26,6 +26,10 @@ module Plumbing
         puts ex
         ex
       end
+    end
+
+    def shutdown
+      @observers = []
     end
   end
 end

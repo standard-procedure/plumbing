@@ -158,16 +158,16 @@ end
 Dispatching events asynchronously (using Fibers)
 ```ruby
 require "plumbing"
-require "plumbing/pipe/fiber_dispatcher"
+require "plumbing/event_dispatcher/fiber"
 require "async"
 
 # `limit` controls how many fibers can dispatch events concurrently - the default is 4
-@first_source = Plumbing::Pipe.start dispatcher: Plumbing::Pipe::FiberDispatcher.new limit: 8
-@second_source = Plumbing::Pipe.start dispatcher: Plumbing::Pipe::FiberDispatcher.new limit: 2
+@first_source = Plumbing::Pipe.start dispatcher: Plumbing::EventDispatcher::Fiber.new limit: 8
+@second_source = Plumbing::Pipe.start dispatcher: Plumbing::EventDispatcher::Fiber.new limit: 2
 
-@junction = Plumbing::Junction.start @first_source, @second_source, dispatcher: Plumbing::Pipe::FiberDispatcher.new
+@junction = Plumbing::Junction.start @first_source, @second_source, dispatcher: Plumbing::EventDispatcher::Fiber.new
 
-@filter = Plumbing::Filter.start source: @junction, dispatcher: Plumbing::Pipe::FiberDispatcher.new do |event|
+@filter = Plumbing::Filter.start source: @junction, dispatcher: Plumbing::EventDispatcher::Fibernew do |event|
   %w[one-one two-two].include? event.type 
 end
 

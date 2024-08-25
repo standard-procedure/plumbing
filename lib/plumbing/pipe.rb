@@ -1,11 +1,11 @@
 module Plumbing
   # A basic pipe
   class Pipe
-    require_relative "dispatcher"
+    require_relative "event_dispatcher"
 
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
     def initialize dispatcher: nil
-      @dispatcher = dispatcher || Dispatcher.new
+      @dispatcher = dispatcher || EventDispatcher.new
     end
 
     # Push an event into the pipe
@@ -51,7 +51,7 @@ module Plumbing
     # Subclasses should override this to perform their own shutdown routines and call `super` to ensure everything is tidied up
     def shutdown
       # clean up and release any observers, just in case
-      @observers = []
+      @dispatcher.shutdown
     end
 
     # Start this pipe

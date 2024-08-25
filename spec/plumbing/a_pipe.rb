@@ -24,40 +24,27 @@ RSpec.shared_examples "a pipe" do |constructor|
   end
 
   it "adds a block observer" do
+    expect(@dispatcher).to receive(:add_observer) { |&block| expect(block).to_not be_nil }
+
     @pipe = described_class.start dispatcher: @dispatcher
-
-    @observer = @pipe.add_observer do |event|
-      # do something
-    end
-
-    expect(@pipe.is_observer?(@observer)).to be true
+    @pipe.add_observer { |event| nil }
   end
 
   it "adds a callable observer" do
-    @pipe = described_class.start dispatcher: @dispatcher
-
     @results = []
     @proc = ->(event) { @results << event }
-    @pipe.add_observer @proc
+    expect(@dispatcher).to receive(:add_observer).with(@proc)
 
-    expect(@pipe.is_observer?(@proc)).to be true
-  end
-
-  it "does not allow an observer without a #call method" do
     @pipe = described_class.start dispatcher: @dispatcher
-
-    expect { @pipe.add_observer(Object.new) }.to raise_error(Plumbing::InvalidObserver)
+    @pipe.add_observer @proc
   end
 
   it "removes an observer" do
     @pipe = described_class.start dispatcher: @dispatcher
-
-    @results = []
-    @proc = ->(event) { @results << event }
-    @pipe.add_observer @proc
+    @proc = ->(event) {}
+    expect(@dispatcher).to receive(:remove_observer).with(@proc)
 
     @pipe.remove_observer @proc
-    expect(@pipe.is_observer?(@proc)).to be false
   end
 
   it "notifies block observers" do
@@ -104,5 +91,12 @@ RSpec.shared_examples "a pipe" do |constructor|
 
     @event = @pipe.notify "some_event"
     expect([@event]).to become_equal_to { @results }
+  end
+
+  it "shuts down the event dispatcher" do
+    @pipe = described_class.start dispatcher: @dispatcher
+    expect(@dispatcher).to receive(:shutdown)
+
+    @pipe.shutdown
   end
 end
