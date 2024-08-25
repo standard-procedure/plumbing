@@ -25,19 +25,19 @@ module Plumbing
 
       def validate_contract_for input
         return true if @validation_contract.nil?
-        result = const_get(@validation_contract).new.call(input)
+        result = const_get(@validation_contract).new.as(Callable).call(input)
         raise PreConditionError, result.errors.to_h.to_yaml unless result.success?
         input
       end
 
       def validate_preconditions_for input
-        failed_preconditions = pre_conditions.select { |name, validator| !validator.call(input) }
+        failed_preconditions = pre_conditions.select { |name, validator| !validator.as(Callable).call(input) }
         raise PreConditionError, failed_preconditions.keys.join(", ") if failed_preconditions.any?
         input
       end
 
       def validate_postconditions_for output
-        failed_postconditions = post_conditions.select { |name, validator| !validator.call(output) }
+        failed_postconditions = post_conditions.select { |name, validator| !validator.as(Callable).call(output) }
         raise PostConditionError, failed_postconditions.keys.join(", ") if failed_postconditions.any?
         output
       end

@@ -1,13 +1,12 @@
 module Plumbing
   class EventDispatcher
     def initialize observers: []
-      @observers = observers
+      @observers = observers.as(Collection)
     end
 
     def add_observer observer = nil, &block
       observer ||= block.to_proc
-      raise Plumbing::InvalidObserver.new "observer_does_not_respond_to_call" unless observer.respond_to? :call
-      @observers << observer
+      @observers << observer.as(Callable).target
       observer
     end
 
@@ -20,7 +19,7 @@ module Plumbing
     end
 
     def dispatch event
-      @observers.collect do |observer|
+      @observers.each do |observer|
         observer.call event
       rescue => ex
         puts ex

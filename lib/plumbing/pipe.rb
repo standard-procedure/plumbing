@@ -5,7 +5,7 @@ module Plumbing
 
     # Subclasses should call `super()` to ensure the pipe is initialised corrected
     def initialize dispatcher: nil
-      @dispatcher = dispatcher || EventDispatcher.new
+      @dispatcher = dispatcher.nil? ? EventDispatcher.new : dispatcher.as(DispatchesEvents)
     end
 
     # Push an event into the pipe

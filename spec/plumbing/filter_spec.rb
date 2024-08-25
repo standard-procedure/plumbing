@@ -1,10 +1,10 @@
 require "spec_helper"
 
 RSpec.describe Plumbing::Filter do
-  it "raises a Plumbing::InvalidSource if it is connected to a non-Pipe" do
+  it "raises a TypeError if it is connected to a non-Pipe" do
     @invalid_source = Object.new
 
-    expect { described_class.start source: @invalid_source }.to raise_error(Plumbing::InvalidSource)
+    expect { described_class.start source: @invalid_source }.to raise_error(TypeError)
   end
 
   it "accepts event types" do

@@ -1,10 +1,10 @@
 require "spec_helper"
 
 RSpec.describe Plumbing::Junction do
-  it "raises a Plumbing::InvalidSource if it is connected to a non-Pipe" do
+  it "raises a TypeError if it is connected to a non-Pipe" do
     @sources = [Plumbing::Pipe.start, Object.new, Plumbing::Pipe.start]
 
-    expect { described_class.start(*@sources) }.to raise_error(Plumbing::InvalidSource)
+    expect { described_class.start(*@sources) }.to raise_error(TypeError)
   end
 
   it "publishes events from a single source" do

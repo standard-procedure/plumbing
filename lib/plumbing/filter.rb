@@ -6,9 +6,8 @@ module Plumbing
     # @param &accepts [Block] a block that returns a boolean value - true to accept the event, false to reject it
     def initialize source:, dispatcher: nil, &accepts
       super(dispatcher: dispatcher)
-      raise InvalidSource.new "#{source} must be a Plumbing::Pipe descendant" unless source.is_a? Plumbing::Pipe
-      @accepts = accepts
-      source.add_observer do |event|
+      @accepts = accepts.as(Callable)
+      source.as(Observable).add_observer do |event|
         filter_and_republish event
       end
     end

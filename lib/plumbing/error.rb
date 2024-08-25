@@ -10,10 +10,4 @@ module Plumbing
 
   # Error raised because an invalid [Event] object was pushed into the pipe
   class InvalidEvent < Error; end
-
-  # Error raised because an invalid observer was registered
-  class InvalidObserver < Error; end
-
-  # Error raised because a Pipe was connected to a non-Pipe
-  class InvalidSource < Plumbing::Error; end
 end

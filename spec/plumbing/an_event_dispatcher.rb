@@ -20,7 +20,7 @@ RSpec.shared_examples "an event dispatcher" do |constructor|
   end
 
   it "does not allow an observer without a #call method" do
-    expect { @dispatcher.add_observer(Object.new) }.to raise_error(Plumbing::InvalidObserver)
+    expect { @dispatcher.add_observer(Object.new) }.to raise_error(TypeError)
   end
 
   it "removes an observer" do

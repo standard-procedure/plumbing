@@ -16,7 +16,7 @@ module Plumbing
     end
 
     def proxy_for object
-      proxy_class_for(object.class).new verify(object)
+      is_a_proxy?(object) || build_proxy_for(object)
     end
 
     def self.define *methods
@@ -25,8 +25,16 @@ module Plumbing
 
     private
 
-    def proxy_class_for klass
-      @proxy_classes[klass] ||= define_proxy_class_for(klass)
+    def is_a_proxy? object
+      @proxy_classes.value?(object.class) ? object : nil
+    end
+
+    def build_proxy_for object
+      proxy_class_for(object).new(verify(object))
+    end
+
+    def proxy_class_for object
+      @proxy_classes[object.class] ||= define_proxy_class_for(object.class)
     end
 
     def define_proxy_class_for klass

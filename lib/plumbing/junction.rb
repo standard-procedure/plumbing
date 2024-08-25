@@ -11,8 +11,7 @@ module Plumbing
     private
 
     def add source
-      raise InvalidSource.new "#{source} must be a Plumbing::Pipe descendant" unless source.is_a? Plumbing::Pipe
-      source.add_observer do |event|
+      source.as(Observable).add_observer do |event|
         dispatch event
       end
       source

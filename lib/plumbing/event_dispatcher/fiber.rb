@@ -47,7 +47,7 @@ module Plumbing
       end
 
       def dispatch_event event, task
-        @observers.collect do |observer|
+        @observers.each do |observer|
           task.async do
             observer.call event
           rescue => ex
