@@ -1,3 +1,9 @@
+## [0.2.1] - 2024-08-25
+
+ - Split the Pipe implementation between the Pipe and EventDispatcher
+ - Use different EventDispatchers to handle fibers or inline pipes
+ - Renamed Chain to Pipeline
+
 ## [0.2.0] - 2024-08-14
 
  - Added optional Dry::Validation support
