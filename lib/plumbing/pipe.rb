@@ -31,6 +31,7 @@ module Plumbing
       observer ||= block.to_proc
       raise Plumbing::InvalidObserver.new "observer_does_not_respond_to_call" unless observer.respond_to? :call
       @observers << observer
+      observer
     end
 
     # Remove an observer from this pipe
