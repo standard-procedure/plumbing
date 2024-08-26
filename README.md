@@ -16,48 +16,41 @@ You can also verify that the output generated is as expected by defining a `post
 
 ### Usage:
 
+[Building an array using multiple steps](/spec/examples/pipeline_spec.rb)
+
 ```ruby
 require "plumbing"
-class BuildSequence < Plumbing::Pipeline 
-  pre_condition :must_be_an_array do |input| 
-    # you could replace this with a `validate` definition (using a Dry::Validation::Contract) if you prefer
-    input.is_a? Array 
-  end
-
-  post_condition :must_have_three_elements do |output|
-    # this is a stupid post-condition but 🤷🏾‍♂️, this is just an example
-    output.length == 3
-  end
-
+class BuildArray < Plumbing::Pipeline
   perform :add_first
   perform :add_second
   perform :add_third
 
-  private 
-
-  def add_first input 
-    input << "first"
+  pre_condition :must_be_an_array do |input|
+    input.is_a? Array
   end
 
-  def add_second input 
-    input << "second" 
+  post_condition :must_have_three_elements do |output|
+    output.length == 3
   end
 
-  def add_third input 
-    input << "third"
-  end
+  private
+
+  def add_first(input) = input << "first"
+
+  def add_second(input) = input << "second"
+
+  def add_third(input) = input << "third"
 end
 
-BuildSequence.new.call []
+BuildArray.new.call []
 # => ["first", "second", "third"]
 
-BuildSequence.new.call 1
+BuildArray.new.call 1
 # => Plumbing::PreconditionError("must_be_an_array")
 
-BuildSequence.new.call ["extra element"]
+BuildArray.new.call ["extra element"]
 # => Plumbing::PostconditionError("must_have_three_elements")
 ```
-
 
 ## Plumbing::Pipe - a composable observer
 
@@ -69,12 +62,11 @@ By default, pipes work synchronously, using a [Plumbing::EventDispatcher](lib/pl
 
 ### Usage
 
-A simple observer:
+[A simple observer](/spec/examples/pipe_spec.rb):
 ```ruby
 require "plumbing"
 
 @source = Plumbing::Pipe.start
-
 @observer = @source.add_observer do |event|
   puts event.type
 end
@@ -83,31 +75,27 @@ end
 # => "something_happened"
 ```
 
-Simple filtering:
+[Simple filtering](/spec/examples/pipe_spec.rb):
 ```ruby
 require "plumbing"
 
 @source = Plumbing::Pipe.start
-
 @filter = Plumbing::Filter.start source: @source do |event|
   %w[important urgent].include? event.type 
 end
-
 @observer = @filter.add_observer do |event|
   puts event.type
 end
 
 @source.notify "important", message: "ALERT! ALERT!"
 # => "important"
-
 @source.notify "unimportant", message: "Nothing to see here"
 # => <no output>
 ```
 
-Custom filtering:
+[Custom filtering](/spec/examples/pipe_spec.rb):
 ```ruby
 require "plumbing"
-
 class EveryThirdEvent < Plumbing::CustomFilter
   def initialize source:
     super source: source
@@ -117,7 +105,7 @@ class EveryThirdEvent < Plumbing::CustomFilter
   def received event
     @events << event
     # if we've already stored 2 events in the buffer then broadcast the newest event and clear the buffer
-    if @events.count >= 2
+    if @events.count >= 3
       @events.clear
       self << event
     end
@@ -126,7 +114,6 @@ end
 
 @source = Plumbing::Pipe.start
 @filter = EveryThirdEvent.new(source: @source)
-
 @observer = @filter.add_observer do |event|
   puts event.type
 end
@@ -139,7 +126,7 @@ end
 # => "9"
 ```
 
-Joining multiple sources
+[Joining multiple sources](/spec/examples/pipe_spec.rb):
 ```ruby
 require "plumbing"
 
@@ -158,7 +145,7 @@ end
 # => "two"
 ```
 
-Dispatching events asynchronously (using Fibers)
+[Dispatching events asynchronously (using Fibers)](/spec/examples/pipe_spec.rb):
 ```ruby
 require "plumbing"
 require "plumbing/event_dispatcher/fiber"
@@ -192,17 +179,19 @@ Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(objec
 
 Define your interface (Person in this example), then cast your objects (instances of PersonData and CarData).  
 
+[Casting objects as duck-types](/spec/examples/rubber_duck_spec.rb):
 ```ruby
 require "plumbing"
 
 Person = Plumbing::RubberDuck.define :first_name, :last_name, :email 
+LikesFood = Plumbing::RubberDuck.define :favourite_food 
 
 PersonData = Struct.new(:first_name, :last_name, :email, :favourite_food)
 CarData = Struct.new(:make, :model, :colour)
 
 @porsche_911 = CarData.new "Porsche", "911", "black"
 @person = @porsche_911.as Person
-# => Raises a TypeError 
+# => Raises a TypeError as CarData does not respond_to #first_name, #last_name, #email
 
 @alice = PersonData.new "Alice", "Aardvark", "alice@example.com", "Ice cream"
 @person = @alice.as Person
@@ -211,7 +200,12 @@ CarData = Struct.new(:make, :model, :colour)
 @person.email 
 # => "alice@example.com"
 @person.favourite_food
-# => NoMethodError - even though :favourite_food is a field in PersonData, it is not included in the definition of Person so cannot be accessed through the RubberDuck type
+# => NoMethodError - even though PersonData defines #favourite_food, @person is a Person rubber duck meaning that #favourite_food is not available unless we re-cast our rubber duck
+
+# Cast our Person rubber duck as a LikesFood rubber duck
+@hungry = @person.as LikesFood 
+@hungry.favourite_food 
+# => "Ice cream"
 ```
 
 ## Installation
