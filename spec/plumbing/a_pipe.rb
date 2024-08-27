@@ -31,7 +31,7 @@ RSpec.shared_examples "a pipe" do
     expect(@pipe.is_observer?(@proc)).to eq false
   end
 
-  it "does not notify objects which are not events" do
+  it "does not send notifications for objects  which are not events" do
     @pipe = described_class.start
     @results = []
     @observer = @pipe.add_observer do |event|

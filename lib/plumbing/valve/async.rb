@@ -25,8 +25,9 @@ module Plumbing
       def tell(message, *args, **params, &block)
         @semaphore.async do |task|
           @target.send message, *args, **params, &block
+        rescue
+          nil
         end
-        nil
       end
 
       def self.start target

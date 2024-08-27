@@ -1,5 +1,42 @@
 # Plumbing
 
+## Configuration 
+
+The most important configuration setting is the `mode`, which governs how messages are handled by Valves.   
+
+By default it is `:inline`, so every command or query is handled synchronously.  
+
+If it is set to `:async`, commands and queries will be handled using fibers (via the [Async gem](https://socketry.github.io/async/index.html)).
+
+The `timeout` setting is used when performing queries - it defaults to 30s.  
+
+```ruby
+puts Plumbing.config.mode 
+# => :inline
+
+Plumbing.configure mode: :async, timeout: 10
+
+puts Plumbing.config.mode 
+# => :async
+```
+
+If you are running a test suite, you can temporarily update the configuration by passing a block.  
+
+```ruby
+puts Plumbing.config.mode 
+# => :inline
+
+Plumbing.configure mode: :async do 
+  puts Plumbing.config.mode 
+  # => :async
+  first_test
+  second_test
+end
+
+puts Plumbing.config.mode 
+# => :inline
+```
+
 ## Plumbing::Pipeline - transform data through a pipeline
 
 Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.  [Unix pipes](https://en.wikipedia.org/wiki/Pipeline_(Unix)) in Ruby.  

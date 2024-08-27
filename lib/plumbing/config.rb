@@ -1,5 +1,5 @@
 module Plumbing
-  Config = Data.define :mode, :valve_proxy_classes, :async_limit, :timeout do
+  Config = Data.define :mode, :valve_proxy_classes, :timeout do
     def valve_proxy_class_for target_class
       valve_proxy_classes[target_class]
     end
@@ -36,7 +36,7 @@ module Plumbing
   private_class_method :set_configuration_and_yield
 
   def self.configs
-    @configs ||= [Config.new(mode: :inline, async_limit: 8, timeout: 30, valve_proxy_classes: {})]
+    @configs ||= [Config.new(mode: :inline, timeout: 30, valve_proxy_classes: {})]
   end
   private_class_method :configs
 end
