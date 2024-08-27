@@ -2,44 +2,25 @@ require_relative "valve/inline"
 
 module Plumbing
   module Valve
-    def query name
-      queries << name.to_sym
-    end
+    def query(*names) = names.map(&:to_sym).each { |n| queries << n }
 
-    def command name
-      commands << name.to_sym
-    end
+    def command(*names) = names.map(&:to_sym).each { |n| commands << n }
 
-    def start(*, **, &)
-      build_proxy_for new(*, **, &)
-    end
+    def start(*, **, &) = build_proxy_for new(*, **, &)
 
-    def queries
-      @queries ||= []
-    end
+    def queries = @queries ||= []
 
-    def commands
-      @commands ||= []
-    end
+    def commands = @commands ||= []
 
     private
 
-    def build_proxy_for target
-      proxy_class.start(target)
-    end
+    def build_proxy_for(target) = proxy_class.start(target)
 
-    def proxy_class
-      Plumbing.config.valve_proxy_class_for(self.class) || register_valve_proxy_class
-    end
+    def proxy_class = Plumbing.config.valve_proxy_class_for(self.class) || register_valve_proxy_class
 
-    def proxy_base_class
-      class_name = Plumbing.config.mode.to_s.capitalize
-      const_get "Plumbing::Valve::#{class_name}"
-    end
+    def proxy_base_class = const_get "Plumbing::Valve::#{Plumbing.config.mode.to_s.capitalize}"
 
-    def register_valve_proxy_class
-      Plumbing.config.register_valve_proxy_class_for(self.class, build_proxy_class)
-    end
+    def register_valve_proxy_class = Plumbing.config.register_valve_proxy_class_for(self.class, build_proxy_class)
 
     def build_proxy_class
       Class.new(proxy_base_class).tap do |proxy_class|

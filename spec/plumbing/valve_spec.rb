@@ -6,9 +6,8 @@ RSpec.describe Plumbing::Valve do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Counter
     extend Plumbing::Valve
-    query :name
-    query :count
-    command :slowly_increment
+    query :name, :count
+    command :slowly_increment, "quick_increment"
 
     def initialize name, initial_value: 0
       @name = name
@@ -31,7 +30,7 @@ RSpec.describe Plumbing::Valve do
   end
 
   it "knows which commands are defined" do
-    expect(Counter.commands).to eq [:slowly_increment]
+    expect(Counter.commands).to eq [:slowly_increment, :quick_increment]
   end
 
   it "reuses existing proxy classes" do
