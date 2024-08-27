@@ -30,10 +30,6 @@ module Plumbing
         end
       end
 
-      def self.start target
-        new(target)
-      end
-
       private
 
       def timeout

@@ -12,10 +12,6 @@ module Plumbing
       def tell(message, ...)
         @target.send(message, ...)
       end
-
-      def self.start target
-        new(target)
-      end
     end
   end
 end

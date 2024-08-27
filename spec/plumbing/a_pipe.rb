@@ -40,7 +40,7 @@ RSpec.shared_examples "a pipe" do
 
     @pipe << Object.new
 
-    sleep 1
+    sleep 0.5
     expect(@results).to eq []
   end
 

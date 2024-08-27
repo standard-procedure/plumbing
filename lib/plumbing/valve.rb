@@ -2,42 +2,59 @@ require_relative "valve/inline"
 
 module Plumbing
   module Valve
-    def start(*, **, &)
-      build_proxy_for(new(*, **, &))
+    def self.included base
+      base.extend ClassMethods
     end
 
-    def query(*names) = names.map(&:to_sym).each { |n| queries << n }
+    module ClassMethods
+      def start(*, **, &)
+        build_proxy_for(new(*, **, &))
+      end
 
-    def queries = @queries ||= []
+      def query(*names) = queries.concat(names.map(&:to_sym))
 
-    def command(*names) = names.map(&:to_sym).each { |n| commands << n }
+      def queries = @queries ||= []
 
-    def commands = @commands ||= []
+      def command(*names) = commands.concat(names.map(&:to_sym))
 
-    private
+      def commands = @commands ||= []
 
-    def build_proxy_for(target) = proxy_class.start(target)
+      def inherited subclass
+        subclass.commands.concat commands
+        subclass.queries.concat queries
+      end
 
-    def proxy_class = Plumbing.config.valve_proxy_class_for(self.class) || register_valve_proxy_class
+      private
 
-    def proxy_base_class = const_get "Plumbing::Valve::#{Plumbing.config.mode.to_s.capitalize}"
+      def build_proxy_for(target)
+        proxy_class_for(target.class).new(target)
+      end
 
-    def register_valve_proxy_class = Plumbing.config.register_valve_proxy_class_for(self.class, build_proxy_class)
+      def proxy_class_for target_class
+        Plumbing.config.valve_proxy_class_for(target_class) || register_valve_proxy_class_for(target_class)
+      end
 
-    def build_proxy_class
-      Class.new(proxy_base_class).tap do |proxy_class|
-        queries.each do |query|
-          proxy_class.define_method query do |*args, **params, &block|
-            ask(query, *args, **params, &block)
+      def proxy_base_class = const_get "Plumbing::Valve::#{Plumbing.config.mode.to_s.capitalize}"
+
+      def register_valve_proxy_class_for target_class
+        Plumbing.config.register_valve_proxy_class_for(target_class, build_proxy_class)
+      end
+
+      def build_proxy_class
+        Class.new(proxy_base_class).tap do |proxy_class|
+          queries.each do |query|
+            proxy_class.define_method query do |*args, **params, &block|
+              ask(query, *args, **params, &block)
+            end
           end
-        end
 
-        commands.each do |command|
-          proxy_class.define_method command do |*args, **params, &block|
-            tell(command, *args, **params, &block)
-            nil
-          rescue
-            nil
+          commands.each do |command|
+            proxy_class.define_method command do |*args, **params, &block|
+              tell(command, *args, **params, &block)
+              nil
+            rescue
+              nil
+            end
           end
         end
       end

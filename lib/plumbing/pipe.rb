@@ -1,18 +1,17 @@
 module Plumbing
   # A basic pipe
   class Pipe
-    extend Valve
+    include Plumbing::Valve
 
-    command :notify, :push, :<<, :remove_observer, :shutdown
+    command :notify, :<<, :remove_observer, :shutdown
     query :add_observer, :is_observer?
 
     # Push an event into the pipe
     # @param event [Plumbing::Event] the event to push into the pipe
-    def push event
+    def << event
       raise Plumbing::InvalidEvent.new event unless event.is_a? Plumbing::Event
       dispatch event
     end
-    alias_method :<<, :push
 
     # A shortcut to creating and then pushing an event
     # @param event_type [String] representing the type of event this is
