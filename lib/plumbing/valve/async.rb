@@ -1,5 +1,5 @@
 require "async"
-require_relative "message"
+require "async/semaphore"
 require "timeout"
 
 module Plumbing
@@ -10,24 +10,22 @@ module Plumbing
       def initialize target
         @target = target
         @queue = []
-        @task = Kernel.Async(transient: true) do
-          dispatch_messages
-        end
+        @semaphore = ::Async::Semaphore.new(1)
       end
 
       def ask(message, *args, **params, &block)
-        message = Message.new(message, args, params, block)
-        @queue << message
+        task = @semaphore.async do
+          @target.send message, *args, **params, &block
+        end
         Timeout.timeout(timeout) do
-          while message.status.nil?
-            sleep 0.1
-          end
-          (message.status == :success) ? message.result : raise(message.result)
+          task.wait
         end
       end
 
       def tell(message, *args, **params, &block)
-        @queue << Message.new(message, args, params, block)
+        @semaphore.async do |task|
+          @target.send message, *args, **params, &block
+        end
         nil
       end
 
@@ -36,22 +34,6 @@ module Plumbing
       end
 
       private
-
-      def dispatch_messages
-        loop do
-          message = @queue.shift
-          dispatch message unless message.nil?
-          sleep 0.1
-        end
-      end
-
-      def dispatch message
-        message.result = @target.send(message.message, *message.args, **message.params, &message.block)
-        message.status = :success
-      rescue => ex
-        message.result = ex
-        message.status = :failed
-      end
 
       def timeout
         Plumbing.config.timeout

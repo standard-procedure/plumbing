@@ -46,11 +46,11 @@ RSpec.describe Plumbing::Valve do
     it "sends all queries and commands immediately" do
       Plumbing.configure mode: :inline do
         @counter = Counter.start "inline counter", initial_value: 100
-
         expect(@counter.name).to eq "inline counter"
         expect(@counter.count).to eq 100
 
         @counter.slowly_increment
+
         expect(@counter.count).to eq 101
       end
     end
@@ -61,13 +61,13 @@ RSpec.describe Plumbing::Valve do
       Sync do
         Plumbing.configure mode: :async do
           @counter = Counter.start "async counter", initial_value: 100
-
           expect(@counter.name).to eq "async counter"
           expect(@counter.count).to eq 100
 
           @counter.slowly_increment
           # bypass the access protections to check the value before the async task has completed
           expect(@counter.send(:target).send(:count)).to eq 100
+          # wait for the async task to complete
           expect(@counter.count).to become_equal_to { 101 }
         end
       end
