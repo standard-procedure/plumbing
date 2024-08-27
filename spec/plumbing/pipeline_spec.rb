@@ -127,7 +127,7 @@ RSpec.describe Plumbing::Pipeline do
     expect(Passthrough.new.call("some parameters")).to eq "some parameters"
   end
 
-  it "raises a PreconditionError if the input fails the precondition test" do
+  it "raises a PreConditionError if the input fails the precondition test" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class PreConditionCheck < Plumbing::Pipeline
       pre_condition :has_first_key do |input|
@@ -152,7 +152,7 @@ RSpec.describe Plumbing::Pipeline do
     expect { PreConditionCheck.new.call(first: "First") }.to raise_error(Plumbing::PreConditionError, "has_second_key")
   end
 
-  it "raises a PreconditionError if the input fails to validate against a Dry::Validation::Contract" do
+  it "raises a PreConditionError if the input fails to validate against a Dry::Validation::Contract" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Validated < Plumbing::Pipeline
       validate_with "Validated::Input"
@@ -181,7 +181,7 @@ RSpec.describe Plumbing::Pipeline do
     expect { Validated.new.call(name: "Bob", email: "bob-has-fat-fingers-and-cant-type") }.to raise_error(Plumbing::PreConditionError, {email: ["must be a valid email"]}.to_yaml)
   end
 
-  it "raises a PostconditionError if the outputs fail the postcondition test" do
+  it "raises a PostConditionError if the outputs fail the postcondition test" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class PostConditionCheck < Plumbing::Pipeline
       post_condition :should_be_integer do |result|

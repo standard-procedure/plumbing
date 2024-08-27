@@ -1,4 +1,5 @@
 require "spec_helper"
+require "dry/validation"
 
 RSpec.describe "Pipeline examples" do
   it "builds a simple pipeline of operations adding to an array with pre-conditions and post-conditions" do
@@ -55,5 +56,34 @@ RSpec.describe "Pipeline examples" do
     # standard:enable Lint/ConstantDefinitionInBlock
 
     expect(BuildSequenceWithExternalStep.new.call([])).to eq ["first", "external", "third"]
+  end
+
+  it "uses a dry-validation contract to test the input parameters" do
+    # standard:disable Lint/ConstantDefinitionInBlock
+    class SayHello < Plumbing::Pipeline
+      validate_with "SayHello::Input"
+      perform :say_hello
+
+      private
+
+      def say_hello input
+        "Hello #{input[:name]} - I will now send a load of annoying marketing messages to #{input[:email]}"
+      end
+
+      class Input < Dry::Validation::Contract
+        params do
+          required(:name).filled(:string)
+          required(:email).filled(:string)
+        end
+        rule :email do
+          key.failure("must be a valid email") unless /\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i.match? value
+        end
+      end
+    end
+    # standard:enable Lint/ConstantDefinitionInBlock
+
+    expect { SayHello.new.call(name: "Alice", email: "alice@example.com") }.to_not raise_error(Plumbing::PreConditionError)
+
+    expect { SayHello.new.call(some: "other data") }.to raise_error(Plumbing::PreConditionError)
   end
 end
