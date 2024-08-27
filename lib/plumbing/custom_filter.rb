@@ -3,8 +3,8 @@ module Plumbing
   class CustomFilter < Pipe
     # Chain this pipe to the source pipe
     # @param source [Plumbing::Pipe]
-    def initialize source:, dispatcher: nil
-      super(dispatcher: dispatcher)
+    def initialize source:
+      super()
       source.as(Observable).add_observer { |event| received event }
     end
 

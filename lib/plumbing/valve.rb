@@ -2,13 +2,15 @@ require_relative "valve/inline"
 
 module Plumbing
   module Valve
+    def start(*, **, &)
+      build_proxy_for(new(*, **, &))
+    end
+
     def query(*names) = names.map(&:to_sym).each { |n| queries << n }
 
-    def command(*names) = names.map(&:to_sym).each { |n| commands << n }
-
-    def start(*, **, &) = build_proxy_for new(*, **, &)
-
     def queries = @queries ||= []
+
+    def command(*names) = names.map(&:to_sym).each { |n| commands << n }
 
     def commands = @commands ||= []
 
@@ -33,6 +35,8 @@ module Plumbing
         commands.each do |command|
           proxy_class.define_method command do |*args, **params, &block|
             tell(command, *args, **params, &block)
+            nil
+          rescue
             nil
           end
         end

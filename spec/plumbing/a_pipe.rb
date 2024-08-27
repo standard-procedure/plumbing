@@ -1,102 +1,106 @@
-RSpec.shared_examples "a pipe" do |constructor|
-  before do
-    @dispatcher = constructor.call
-  end
-
-  it "pushes an event into the pipe" do
-    @pipe = described_class.start dispatcher: @dispatcher
-    @event = Plumbing::Event.new type: "test_event", data: {test: "event"}
-
-    expect { @pipe << @event }.to_not raise_error
-  end
-
-  it "only allows events to be pushed" do
-    @pipe = described_class.start dispatcher: @dispatcher
-    @event = Object.new
-
-    expect { @pipe << @event }.to raise_error(Plumbing::InvalidEvent)
-  end
-
-  it "creates an event and pushes it into the pipe" do
-    @pipe = described_class.start dispatcher: @dispatcher
-
-    expect { @pipe.notify "test_event", some: "data" }.to_not raise_error
-  end
-
+RSpec.shared_examples "a pipe" do
   it "adds a block observer" do
-    expect(@dispatcher).to receive(:add_observer) { |&block| expect(block).to_not be_nil }
-
-    @pipe = described_class.start dispatcher: @dispatcher
-    @pipe.add_observer { |event| nil }
+    @pipe = described_class.start
+    @observer = @pipe.add_observer do |event|
+      puts event.type
+    end
+    expect(@pipe.is_observer?(@observer)).to eq true
   end
 
   it "adds a callable observer" do
-    @results = []
-    @proc = ->(event) { @results << event }
-    expect(@dispatcher).to receive(:add_observer).with(@proc)
+    @pipe = described_class.start
+    @proc = ->(event) { puts event.type }
 
-    @pipe = described_class.start dispatcher: @dispatcher
     @pipe.add_observer @proc
+
+    expect(@pipe.is_observer?(@proc)).to eq true
+  end
+
+  it "does not allow an observer without a #call method" do
+    @pipe = described_class.start
+
+    expect { @pipe.add_observer(Object.new) }.to raise_error(TypeError)
   end
 
   it "removes an observer" do
-    @pipe = described_class.start dispatcher: @dispatcher
-    @proc = ->(event) {}
-    expect(@dispatcher).to receive(:remove_observer).with(@proc)
+    @pipe = described_class.start
+    @proc = ->(event) { puts event.type }
 
     @pipe.remove_observer @proc
+
+    expect(@pipe.is_observer?(@proc)).to eq false
   end
 
-  it "notifies block observers" do
-    @pipe = described_class.start dispatcher: @dispatcher
-
+  it "does not notify objects which are not events" do
+    @pipe = described_class.start
     @results = []
     @observer = @pipe.add_observer do |event|
       @results << event
     end
 
-    @first_event = @pipe.notify "test_event", test: "event"
+    @pipe << Object.new
+
+    sleep 1
+    expect(@results).to eq []
+  end
+
+  it "notifies block observers" do
+    @pipe = described_class.start
+    @results = []
+    @observer = @pipe.add_observer do |event|
+      @results << event
+    end
+
+    @first_event = Plumbing::Event.new type: "first_event", data: {test: "event"}
+    @second_event = Plumbing::Event.new type: "second_event", data: {test: "event"}
+
+    @pipe << @first_event
     expect([@first_event]).to become_equal_to { @results }
 
-    @second_event = @pipe.notify "test_event", test: "event"
+    @pipe << @second_event
     expect([@first_event, @second_event]).to become_equal_to { @results }
   end
 
   it "notifies callable observers" do
-    @pipe = described_class.start dispatcher: @dispatcher
-
+    @pipe = described_class.start
     @results = []
     @observer = ->(event) { @results << event }
     @pipe.add_observer @observer
 
-    @first_event = @pipe.notify "test_event", test: "event"
+    @first_event = Plumbing::Event.new type: "first_event", data: {test: "event"}
+    @second_event = Plumbing::Event.new type: "second_event", data: {test: "event"}
+
+    @pipe << @first_event
     expect([@first_event]).to become_equal_to { @results }
 
-    @second_event = @pipe.notify "test_event", test: "event"
+    @pipe << @second_event
     expect([@first_event, @second_event]).to become_equal_to { @results }
   end
 
   it "ensures all observers are notified even if an observer raises an exception" do
-    @pipe = described_class.start dispatcher: @dispatcher
-
+    @pipe = described_class.start
     @results = []
-
     @failing_observer = @pipe.add_observer do |event|
       raise "Failed processing #{event.type}"
     end
-
     @working_observer = @pipe.add_observer do |event|
       @results << event
     end
 
-    @event = @pipe.notify "some_event"
+    @event = Plumbing::Event.new type: "event", data: {test: "event"}
+
+    @pipe << @event
+
     expect([@event]).to become_equal_to { @results }
   end
 
-  it "shuts down the event dispatcher" do
-    @pipe = described_class.start dispatcher: @dispatcher
-    expect(@dispatcher).to receive(:shutdown)
+  it "shuts down the pipe" do
+    @pipe = described_class.start
+    @observer = ->(event) { @results << event }
+    @pipe.add_observer @observer
 
     @pipe.shutdown
+
+    expect(@pipe.is_observer?(@observer)).to eq false
   end
 end

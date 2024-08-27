@@ -3,44 +3,21 @@ require_relative "a_pipe"
 require "async"
 
 RSpec.describe Plumbing::Pipe do
-  context "synchronously dispatching events" do
-    it_behaves_like "a pipe", -> { Plumbing::EventDispatcher.new }
+  context "inline" do
+    around :example do |example|
+      Plumbing.configure mode: :inline, &example
+    end
+
+    it_behaves_like "a pipe"
   end
 
-  context "dispatching events with fibers" do
-    require_relative "../../lib/plumbing/event_dispatcher/fiber"
+  context "async" do
     around :example do |example|
-      Sync(&example)
+      Sync do
+        Plumbing.configure mode: :async, &example
+      end
     end
 
-    it_behaves_like "a pipe", -> { Plumbing::EventDispatcher::Fiber.new }
-
-    it "debounces duplicate events" do
-      @dispatcher = Plumbing::EventDispatcher::Fiber.new
-      @pipe = described_class.start dispatcher: @dispatcher
-      @first_event = Plumbing::Event.new type: "first", data: {test: "event"}
-      @second_event = Plumbing::Event.new type: "second", data: {test: "event"}
-
-      @results = []
-      @observer = ->(event) { @results << event }
-      @pipe.add_observer @observer
-
-      # Pause the dispatcher to prevent timing errors when the spec is running
-      @dispatcher.pause
-      @pipe << @first_event
-      @pipe << @first_event
-      @pipe << @second_event
-      @pipe << @first_event
-      @pipe << @second_event
-      @dispatcher.resume
-
-      expect([@first_event, @second_event]).to become_equal_to { @results }
-
-      # Check that subsequent events are processed and not debounced
-      @pipe << @first_event
-      @pipe << @second_event
-
-      expect([@first_event, @second_event, @first_event, @second_event]).to become_equal_to { @results }
-    end
+    it_behaves_like "a pipe"
   end
 end

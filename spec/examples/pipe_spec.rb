@@ -1,5 +1,4 @@
 require "spec_helper"
-require "plumbing/event_dispatcher/fiber"
 require "async"
 
 RSpec.describe "Pipe examples" do
@@ -85,24 +84,26 @@ RSpec.describe "Pipe examples" do
   end
 
   it "dispatches events asynchronously using fibers" do
-    @first_source = Plumbing::Pipe.start dispatcher: Plumbing::EventDispatcher::Fiber.new
-    @second_source = Plumbing::Pipe.start dispatcher: Plumbing::EventDispatcher::Fiber.new
-    @junction = Plumbing::Junction.start @first_source, @second_source, dispatcher: Plumbing::EventDispatcher::Fiber.new
-    @filter = Plumbing::Filter.start source: @junction, dispatcher: Plumbing::EventDispatcher::Fiber.new do |event|
-      %w[one-one two-two].include? event.type
-    end
-    @result = []
-    @filter.add_observer do |event|
-      @result << event.type
-    end
+    Plumbing.configure mode: :async do
+      Sync do
+        @first_source = Plumbing::Pipe.start
+        @second_source = Plumbing::Pipe.start
+        @junction = Plumbing::Junction.start @first_source, @second_source
+        @filter = Plumbing::Filter.start source: @junction do |event|
+          %w[one-one two-two].include? event.type
+        end
+        @result = []
+        @filter.add_observer do |event|
+          @result << event.type
+        end
 
-    Sync do
-      @first_source.notify "one-one"
-      @first_source.notify "one-two"
-      @second_source.notify "two-one"
-      @second_source.notify "two-two"
+        @first_source.notify "one-one"
+        @first_source.notify "one-two"
+        @second_source.notify "two-one"
+        @second_source.notify "two-two"
 
-      expect(["one-one", "two-two"]).to become_equal_to { @result }
+        expect(["one-one", "two-two"]).to become_equal_to { @result }
+      end
     end
   end
 end

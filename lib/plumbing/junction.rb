@@ -3,8 +3,8 @@ module Plumbing
   class Junction < Pipe
     # Chain multiple sources to this pipe
     # @param [Array<Plumbing::Pipe>]
-    def initialize *sources, dispatcher: nil
-      super(dispatcher: dispatcher)
+    def initialize *sources
+      super()
       @sources = sources.collect { |source| add(source) }
     end
 

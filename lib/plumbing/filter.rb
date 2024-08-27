@@ -5,8 +5,8 @@ module Plumbing
     # Chain this pipe to the source pipe
     # @param source [Plumbing::Pipe]
     # @param &accepts [Block] a block that returns a boolean value - true to accept the event, false to reject it
-    def initialize source:, dispatcher: nil, &accepts
-      super(source: source, dispatcher: dispatcher)
+    def initialize source:, &accepts
+      super(source: source)
       @accepts = accepts.as(Callable)
     end
 
