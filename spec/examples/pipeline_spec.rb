@@ -82,7 +82,7 @@ RSpec.describe "Pipeline examples" do
     end
     # standard:enable Lint/ConstantDefinitionInBlock
 
-    expect { SayHello.new.call(name: "Alice", email: "alice@example.com") }.to_not raise_error(Plumbing::PreConditionError)
+    SayHello.new.call(name: "Alice", email: "alice@example.com")
 
     expect { SayHello.new.call(some: "other data") }.to raise_error(Plumbing::PreConditionError)
   end
