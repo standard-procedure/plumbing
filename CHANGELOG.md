@@ -1,3 +1,8 @@
+## [0.3.0] - 2024-08-28
+
+ - Added Plumbing::Valve
+ - Reimplemented Plumbing::Pipe to use Plumbing::Valve
+
 ## [0.2.2] - 2024-08-25
 
  - Added Plumbing::RubberDuck

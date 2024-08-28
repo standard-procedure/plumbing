@@ -2,7 +2,7 @@ module Plumbing
   # A pipe that filters events from a source pipe
   class Junction < Pipe
     # Chain multiple sources to this pipe
-    # @param [Array<Plumbing::Pipe>]
+    # @param sources [Array<Plumbing::Observable>] the sources which will be joined and relayed
     def initialize *sources
       super()
       @sources = sources.collect { |source| add(source) }

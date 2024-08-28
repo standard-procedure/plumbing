@@ -23,10 +23,10 @@ module Plumbing
     end
 
     # Add an observer to this pipe
-    # @param callable [Proc] (optional)
+    # Either a `callable` or a `block` must be supplied.  If the latter, it is converted to a [Proc]
+    # @param callable [#call] (optional)
     # @param &block [Block] (optional)
     # @return [#call]
-    # Either a `callable` or a `block` must be supplied.  If the latter, it is converted to a [Proc]
     def add_observer(observer = nil, &block)
       observer ||= block.to_proc
       observers << observer.as(Callable).target
@@ -40,8 +40,8 @@ module Plumbing
     end
 
     # Test whether the given observer is observing this pipe
-    # @param observer
-    # @return [boolean]
+    # @param [#call] observer
+    # @return [Boolean]
     def is_observer? observer
       observers.include? observer
     end

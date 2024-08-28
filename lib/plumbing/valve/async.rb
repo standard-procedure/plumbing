@@ -13,6 +13,7 @@ module Plumbing
         @semaphore = ::Async::Semaphore.new(1)
       end
 
+      # Ask the target to answer the given message
       def ask(message, *args, **params, &block)
         task = @semaphore.async do
           @target.send message, *args, **params, &block
@@ -22,6 +23,7 @@ module Plumbing
         end
       end
 
+      # Tell the target to execute the given message
       def tell(message, *args, **params, &block)
         @semaphore.async do |task|
           @target.send message, *args, **params, &block

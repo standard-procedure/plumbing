@@ -2,7 +2,7 @@ module Plumbing
   # A pipe that can be subclassed to filter events from a source pipe
   class CustomFilter < Pipe
     # Chain this pipe to the source pipe
-    # @param source [Plumbing::Pipe]
+    # @param source [Plumbing::Observable] the source from which to receive and filter events
     def initialize source:
       super()
       source.as(Observable).add_observer { |event| received event }

@@ -7,16 +7,24 @@ module Plumbing
     end
 
     module ClassMethods
+      # Create a new valve instance and build a proxy for it using the current mode
+      # @return [Plumbing::Valve::Base] the proxy for the valve instance
       def start(*, **, &)
         build_proxy_for(new(*, **, &))
       end
 
+      # Define the queries that this valve can answer
+      # @param names [Array<Symbol>] the names of the queries
       def query(*names) = queries.concat(names.map(&:to_sym))
 
+      # List the queries that this valve can answer
       def queries = @queries ||= []
 
+      # Define the commands that this valve can execute
+      # @param names [Array<Symbol>] the names of the commands
       def command(*names) = commands.concat(names.map(&:to_sym))
 
+      # List the commands that this valve can execute
       def commands = @commands ||= []
 
       def inherited subclass

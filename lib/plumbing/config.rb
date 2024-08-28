@@ -1,3 +1,4 @@
+# Pipes, pipelines, valves and rubber ducks
 module Plumbing
   Config = Data.define :mode, :valve_proxy_classes, :timeout do
     def valve_proxy_class_for target_class
@@ -8,11 +9,19 @@ module Plumbing
       valve_proxy_classes[target_class] = proxy_class
     end
   end
+  private_constant :Config
 
+  # Access the current configuration
+  # @return [Config]
   def self.config
     configs.last
   end
 
+  # Configure the plumbing
+  # @param params [Hash] the configuration options
+  # @option mode [Symbol] the mode to use (:inline is the default, :async uses fibers)
+  # @option timeout [Integer] the timeout (in seconds) to use (30s is the default)
+  # @yield optional block - after the block has completed its execution, the configuration is restored to its previous state (useful for test suites)
   def self.configure(**params, &block)
     new_config = Config.new(**config.to_h.merge(params).merge(valve_proxy_classes: {}))
     if block.nil?

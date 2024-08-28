@@ -22,12 +22,19 @@ RSpec.describe "Valve examples" do
   # standard:enable Lint/ConstantDefinitionInBlock
 
   context "inline" do
-    it "builds a valve" do
+    it "queries an object" do
       Plumbing.configure mode: :inline do
         @person = Employee.start "Alice"
 
         expect(@person.name).to eq "Alice"
         expect(@person.job_title).to eq "Sales assistant"
+      end
+    end
+
+    it "commands an object" do
+      Plumbing.configure mode: :inline do
+        @person = Employee.start "Alice"
+
         @person.promote
 
         expect(@person.job_title).to eq "Sales manager"
@@ -36,18 +43,25 @@ RSpec.describe "Valve examples" do
   end
 
   context "async" do
-    it "builds a valve" do
+    around :example do |example|
       Plumbing.configure mode: :async do
-        Sync do
-          @person = Employee.start "Alice"
-
-          expect(@person.name).to eq "Alice"
-          expect(@person.job_title).to eq "Sales assistant"
-          @person.promote
-
-          expect("Sales manager").to become_equal_to { @person.job_title }
-        end
+        Kernel::Async(&example)
       end
+    end
+
+    it "queries an object" do
+      @person = Employee.start "Alice"
+
+      expect(@person.name).to eq "Alice"
+      expect(@person.job_title).to eq "Sales assistant"
+    end
+
+    it "commands an object" do
+      @person = Employee.start "Alice"
+
+      @person.promote
+
+      expect(@person.job_title).to eq "Sales manager"
     end
   end
 end

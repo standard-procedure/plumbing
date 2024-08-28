@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    standard-procedure-plumbing (0.2.2)
+    standard-procedure-plumbing (0.3.0)
 
 GEM
   remote: https://rubygems.org/

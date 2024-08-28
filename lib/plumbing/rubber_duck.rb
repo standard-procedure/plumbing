@@ -9,16 +9,25 @@ module Plumbing
       @proxy_classes = {}
     end
 
+    # Verify that the given object responds to the required methods
+    # @param object [Object] the object to verify
+    # @return [Object] the object if it passes the verification
+    # @raise [TypeError] if the object does not respond to the required methods
     def verify object
       missing_methods = @methods.reject { |method| object.respond_to? method }
       raise TypeError, "Expected object to respond to #{missing_methods.join(", ")}" unless missing_methods.empty?
       object
     end
 
+    # Test if the given object is a proxy
+    # @param object [Object] the object to test
+    # @return [Boolean] true if the object is a proxy, false otherwise
     def proxy_for object
       is_a_proxy?(object) || build_proxy_for(object)
     end
 
+    # Define a new rubber duck type
+    # @param *methods [Array<Symbol>] the methods that the duck-type should respond to
     def self.define *methods
       new(*methods)
     end

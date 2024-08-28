@@ -7,6 +7,9 @@ module Plumbing
     extend Plumbing::Pipeline::Contracts
     extend Plumbing::Pipeline::Operations
 
+    # Start the pipeline operation with the given input
+    # @param input [Object] the input data to be processed
+    # @return [Object] the output data
     def call input
       self.class._call input, self
     end
