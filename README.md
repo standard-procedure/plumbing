@@ -156,7 +156,12 @@ An [actor](https://en.wikipedia.org/wiki/Actor_model) defines the messages an ob
 
 [Plumbing::Valve](/lib/plumbing/valve.rb) ensures that all messages received are channelled into a concurrency-safe queue. This allows you to take an existing class and ensures that messages received via its public API are made concurrency-safe.  
 
-Include the Plumbing::Valve module into your class, define the messages the objects can respond to and set the `Plumbing` configuration to set the desired concurrency model.  Messages themselves are split into two categories: commands and queries.  Commands have no return value so when the message is sent, the caller does not block and execution continues immediately.  Queries return a value so the caller must block until the actor has returned a value.  
+Include the Plumbing::Valve module into your class, define the messages the objects can respond to and set the `Plumbing` configuration to set the desired concurrency model.  Messages themselves are split into two categories: commands and queries.  
+
+- Commands have no return value so when the message is sent, the caller does not block, the task is called asynchronously and the caller continues immediately
+- Queries return a value so the caller blocks until the actor has returned a value
+- However, if you call a query and pass `ignore_result: true` then the query will not block, although you will not be able to access the return value - this is for commands that do something and then return a result based on that work (which you may or may not be interested in - see Plumbing::Pipe#add_observer)
+- None of the above applies if the `Plumbing mode` is set to `:inline` (which is the default) - in this case, the actor behaves like normal ruby code
 
 Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the valve are available in this proxy - so you don't have to worry about callers bypassing the valve's internal context.  
 
@@ -175,7 +180,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
     attr_reader :name, :job_title
 
     include Plumbing::Valve
-    query :name, :job_title
+    query :name, :job_title, :greet_slowly
     command :promote
 
     def initialize(name)
@@ -186,6 +191,11 @@ Also be aware that if you use valves in one place, you need to use them everywhe
     def promote
       sleep 0.5
       @job_title = "Sales manager"
+    end
+
+    def greet_slowly 
+      sleep 0.2
+      "H E L L O"
     end
   end
 ```
@@ -206,6 +216,12 @@ Also be aware that if you use valves in one place, you need to use them everywhe
   # this will block for 0.5 seconds
   puts @person.job_title
   # => "Sales manager"
+
+  @person.greet_slowly 
+  # this will block for 0.2 seconds before returning "H E L L O"
+
+  @person.greet_slowly(ignore_result: true)
+  # this will block for 0.2 seconds (as the mode is :inline) before returning nil
 ```
 
 [Using fibers](/spec/examples/valve_spec.rb) with concurrency but no parallelism
@@ -226,6 +242,12 @@ Also be aware that if you use valves in one place, you need to use them everywhe
   # this will return immediately without blocking
   puts @person.job_title
   # => "Sales manager" (this will block for 0.5s because #job_title query will not start until the #promote command has completed)
+
+  @person.greet_slowly 
+  # this will block for 0.2 seconds before returning "H E L L O"
+
+  @person.greet_slowly(ignore_result: true)
+  # this will not block and returns nil
 ```
 
 ## Plumbing::Pipe - a composable observer

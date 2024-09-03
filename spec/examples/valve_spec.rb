@@ -4,7 +4,7 @@ RSpec.describe "Valve examples" do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Employee
     include Plumbing::Valve
-    query :name, :job_title
+    query :name, :job_title, :greet_slowly
     command :promote
 
     def initialize(name)
@@ -18,6 +18,11 @@ RSpec.describe "Valve examples" do
       sleep 0.5
       @job_title = "Sales manager"
     end
+
+    def greet_slowly
+      sleep 0.2
+      "H E L L O"
+    end
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
@@ -28,6 +33,14 @@ RSpec.describe "Valve examples" do
 
         expect(@person.name).to eq "Alice"
         expect(@person.job_title).to eq "Sales assistant"
+
+        @time = Time.now
+        expect(@person.greet_slowly).to eq "H E L L O"
+        expect(Time.now - @time).to be > 0.1
+
+        @time = Time.now
+        expect(@person.greet_slowly(ignore_result: true)).to be_nil
+        expect(Time.now - @time).to be > 0.1
       end
     end
 
@@ -54,6 +67,14 @@ RSpec.describe "Valve examples" do
 
       expect(@person.name).to eq "Alice"
       expect(@person.job_title).to eq "Sales assistant"
+
+      @time = Time.now
+      expect(@person.greet_slowly).to eq "H E L L O"
+      expect(Time.now - @time).to be > 0.1
+
+      @time = Time.now
+      expect(@person.greet_slowly(ignore_result: true)).to be_nil
+      expect(Time.now - @time).to be < 0.1
     end
 
     it "commands an object" do

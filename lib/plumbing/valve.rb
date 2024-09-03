@@ -51,8 +51,8 @@ module Plumbing
       def build_proxy_class
         Class.new(proxy_base_class).tap do |proxy_class|
           queries.each do |query|
-            proxy_class.define_method query do |*args, **params, &block|
-              ask(query, *args, **params, &block)
+            proxy_class.define_method query do |*args, ignore_result: false, **params, &block|
+              ignore_result ? tell(query, *args, **params, &block) : ask(query, *args, **params, &block)
             end
           end
 

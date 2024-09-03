@@ -1,3 +1,7 @@
+## [0.3.1] - 2024-09-03
+
+ - Added `ignore_result` for queries on Plumbing::Valves
+
 ## [0.3.0] - 2024-08-28
 
  - Added Plumbing::Valve

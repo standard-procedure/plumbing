@@ -13,6 +13,7 @@ module Plumbing
       # Tell the target to execute the given message
       def tell(message, ...)
         @target.send(message, ...)
+        nil
       end
     end
   end

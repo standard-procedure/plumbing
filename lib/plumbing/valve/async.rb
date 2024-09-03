@@ -30,6 +30,7 @@ module Plumbing
         rescue
           nil
         end
+        nil
       end
 
       private
