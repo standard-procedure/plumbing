@@ -19,11 +19,8 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/standard-procedure/plumbing"
   spec.metadata["changelog_uri"] = "https://github.com/standard-procedure/plumbing/blob/main/CHANGELOG.md"
 
-  spec.files = Dir.chdir(__dir__) do
-    `git ls-files -z`.split("\x0").reject do |f|
-      (File.expand_path(f) == __FILE__) ||
-        f.start_with?(*%w[bin/ test/ spec/ features/ .git .github appveyor Gemfile])
-    end
+  spec.files = Dir.chdir(File.expand_path(__dir__)) do
+    Dir["{lib,spec}/**/*", "Rakefile", "README.md"]
   end
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }

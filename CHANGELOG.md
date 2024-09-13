@@ -1,3 +1,7 @@
+## [0.3.2] - 2024-09-13
+
+ - URG - somehow I'd managed to exclude the lib folder from the gem contents
+
 ## [0.3.1] - 2024-09-03
 
  - Added `ignore_result` for queries on Plumbing::Valves
