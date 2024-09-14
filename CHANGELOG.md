@@ -1,3 +1,8 @@
+## [0.3.3] - 2024-09-14
+
+ - Added :threaded and :rails modes
+ - RubberDuck now works with Module and Class
+
 ## [0.3.2] - 2024-09-13
 
  - URG - somehow I'd managed to exclude the lib folder from the gem contents
