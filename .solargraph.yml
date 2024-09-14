@@ -6,20 +6,9 @@ exclude:
   - test/**/*
   - vendor/**/*
   - ".bundle/**/*"
-require:
-  - actioncable
-  - actionmailer
-  - actionpack
-  - actionview
-  - activejob
-  - activemodel
-  - activerecord
-  - activestorage
-  - activesupport  
 domains: []
 reporters:
-  - rubocop
-  - require_not_found
+  - standardrb
 formatter:
   rubocop:
     cops: safe
@@ -28,5 +17,5 @@ formatter:
     extra_args: []
 require_paths: []
 plugins:
-  - solargraph-rails
+  - solargraph-standardrb
 max_files: 5000
