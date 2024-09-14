@@ -2,6 +2,7 @@ require "spec_helper"
 
 require_relative "../../lib/plumbing/valve/async"
 require_relative "../../lib/plumbing/valve/threaded"
+require_relative "../../lib/plumbing/valve/rails"
 
 RSpec.describe Plumbing::Valve do
   # standard:disable Lint/ConstantDefinitionInBlock
@@ -125,85 +126,46 @@ RSpec.describe Plumbing::Valve do
     end
   end
 
-  context "async" do
-    around :example do |example|
-      Sync do
-        Plumbing.configure mode: :async, &example
+  [:threaded, :async].each do |mode|
+    context mode.to_s do
+      around :example do |example|
+        Sync do
+          Plumbing.configure mode: mode, &example
+        end
       end
-    end
 
-    it "sends all queries using fibers and waits for the response" do
-      @counter = Counter.start "async counter", initial_value: 100
-      @time = Time.now
+      it "performs queries in the background and waits for the response" do
+        @counter = Counter.start "async counter", initial_value: 100
+        @time = Time.now
 
-      expect(@counter.name).to eq "async counter"
-      expect(@counter.count).to eq 100
-      expect(Time.now - @time).to be < 0.1
+        expect(@counter.name).to eq "async counter"
+        expect(@counter.count).to eq 100
+        expect(Time.now - @time).to be < 0.1
 
-      expect(@counter.slow_query).to eq 100
-      expect(Time.now - @time).to be > 0.4
-    end
-
-    it "ignores the response from a query and returns immediately" do
-      @counter = Counter.start "async counter", initial_value: 100
-      @time = Time.now
-
-      expect(@counter.slow_query(ignore_result: true)).to be_nil
-
-      expect(Time.now - @time).to be < 0.1
-    end
-
-    it "sends all commands using fibers without waiting for the response" do
-      @counter = Counter.start "async counter", initial_value: 100
-      @time = Time.now
-
-      @counter.slowly_increment
-      expect(Time.now - @time).to be < 0.1
-
-      # wait for the async task to complete
-      expect(101).to become_equal_to { @counter.count }
-      expect(Time.now - @time).to be > 0.4
-    end
-  end
-
-  context "threaded" do
-    around :example do |example|
-      Sync do
-        Plumbing.configure mode: :threaded, &example
+        expect(@counter.slow_query).to eq 100
+        expect(Time.now - @time).to be > 0.4
       end
-    end
 
-    it "sends all queries using threads and waits for the response" do
-      @counter = Counter.start "async counter", initial_value: 100
-      @time = Time.now
+      it "performs queries ignoring the response and returning immediately" do
+        @counter = Counter.start "threaded counter", initial_value: 100
+        @time = Time.now
 
-      expect(@counter.name).to eq "async counter"
-      expect(@counter.count).to eq 100
-      expect(Time.now - @time).to be < 0.1
+        expect(@counter.slow_query(ignore_result: true)).to be_nil
 
-      expect(@counter.slow_query).to eq 100
-      expect(Time.now - @time).to be > 0.4
-    end
+        expect(Time.now - @time).to be < 0.1
+      end
 
-    it "ignores the response from a query and returns immediately" do
-      @counter = Counter.start "threaded counter", initial_value: 100
-      @time = Time.now
+      it "performs commands in the background and returning immediately" do
+        @counter = Counter.start "threaded counter", initial_value: 100
+        @time = Time.now
 
-      expect(@counter.slow_query(ignore_result: true)).to be_nil
+        @counter.slowly_increment
+        expect(Time.now - @time).to be < 0.1
 
-      expect(Time.now - @time).to be < 0.1
-    end
-
-    it "sends all commands using threads without waiting for the response" do
-      @counter = Counter.start "threaded counter", initial_value: 100
-      @time = Time.now
-
-      @counter.slowly_increment
-      expect(Time.now - @time).to be < 0.1
-
-      # wait for the threaded task to complete
-      expect(101).to become_equal_to { @counter.count }
-      expect(Time.now - @time).to be > 0.4
+        # wait for the threaded task to complete
+        expect(101).to become_equal_to { @counter.count }
+        expect(Time.now - @time).to be > 0.4
+      end
     end
   end
 end

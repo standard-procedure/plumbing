@@ -45,7 +45,7 @@ module Plumbing
       def add_message_to_queue message_name, *args, **params, &block
         Message.new(@target, message_name, args, params, block, Concurrent::MVar.new).tap do |message|
           @queue << message
-          send_messages if @queue.any?
+          send_messages if @queue.size == 1
         end
       end
 
@@ -56,7 +56,11 @@ module Plumbing
           end
         end
 
-        def call = result.put target.send(name, *args, **params, &block)
+        def call
+          result.put target.send(name, *args, **params, &block)
+        rescue => ex
+          result.put ex
+        end
       end
     end
   end

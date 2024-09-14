@@ -20,4 +20,12 @@ RSpec.describe Plumbing::Pipe do
 
     it_behaves_like "a pipe"
   end
+
+  context "threaded" do
+    around :example do |example|
+      Plumbing.configure mode: :threaded, &example
+    end
+
+    it_behaves_like "a pipe"
+  end
 end
