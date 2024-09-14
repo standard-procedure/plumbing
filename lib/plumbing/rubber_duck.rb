@@ -1,6 +1,7 @@
 module Plumbing
   # A type-checker for duck-types
   class RubberDuck
+    require_relative "rubber_duck/module"
     require_relative "rubber_duck/object"
     require_relative "rubber_duck/proxy"
 
@@ -26,10 +27,19 @@ module Plumbing
       is_a_proxy?(object) || build_proxy_for(object)
     end
 
-    # Define a new rubber duck type
-    # @param *methods [Array<Symbol>] the methods that the duck-type should respond to
-    def self.define *methods
-      new(*methods)
+    class << self
+      # Define a new rubber duck type
+      # @param *methods [Array<Symbol>] the methods that the duck-type should respond to
+      def define *methods
+        new(*methods)
+      end
+
+      # Cast the object to the given type
+      # @param object [Object] to be csat
+      # @param to [Module, Plumbing::RubberDuck] the type to cast into
+      def cast object, type:
+        type.proxy_for object
+      end
     end
 
     private

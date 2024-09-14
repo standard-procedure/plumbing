@@ -401,8 +401,9 @@ Pipes are implemented as valves, meaning that event notifications can be dispatc
 
 ## Plumbing::RubberDuck - duck types and type-casts
 
-Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming)) specifying which messages you expect to be able to send.  Then cast an object into that type, which first tests that the object can respond to those messages and then builds a proxy that responds to just those messages and no others (so no-one can abuse the specific type-casting you have specified).  However, if you take one of these proxies, you can safely re-cast it as another type (as long as the original target object is castable).
+Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming)) specifying which messages you expect to be able to send.
 
+Then cast an object into that type.  This first tests that the object can respond to those messages and then builds a proxy that responds to those messages (and no others).  However, if you take one of these proxies, you can safely re-cast it as another type (as long as the original target object responds to the correct messages).
 
 ### Usage
 
@@ -437,6 +438,43 @@ Define your interface (Person in this example), then cast your objects (instance
   # => "Ice cream"
 ```
 
+You can also use the same `@object.as type` to type-check instances against modules or classes.  This creates a RubberDuck proxy based on the module or class you're casting into.  So the cast will pass if the object responds to the correct messages, even if a strict `.is_a?` test would fail.
+
+```ruby
+  require "plumbing"
+
+  module Person
+    def first_name = @first_name
+
+    def last_name = @last_name
+
+    def email = @email
+  end
+
+  module LikesFood
+    def favourite_food = @favourite_food
+  end
+
+  PersonData = Struct.new(:first_name, :last_name, :email, :favourite_food)
+  CarData = Struct.new(:make, :model, :colour)
+
+  @porsche_911 = CarData.new "Porsche", "911", "black"
+  expect { @porsche_911.as Person }.to raise_error(TypeError)
+
+  @alice = PersonData.new "Alice", "Aardvark", "alice@example.com", "Ice cream"
+
+  @alics.is_a? Person
+  # => false - PersonData does not `include Person`
+  @person = @alice.as Person
+  # This cast is OK because PersonData responds to :first_name, :last_name and :email
+  expect(@person.first_name).to eq "Alice"
+  expect(@person.email).to eq "alice@example.com"
+  expect { @person.favourite_food }.to raise_error(NoMethodError)
+
+  @hungry = @person.as LikesFood
+  expect(@hungry.favourite_food).to eq "Ice cream"
+```
+
 ## Installation
 
 Install the gem and add to the application's Gemfile by executing:
@@ -449,6 +487,9 @@ Then:
 
 ```ruby
 require 'plumbing'
+
+# Set the mode for your Valves and Pipes
+Plumbing.config mode: :async
 ```
 
 ## Development
