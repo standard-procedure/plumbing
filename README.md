@@ -1,55 +1,59 @@
 # Plumbing
 
-## Configuration 
+## Configuration
 
-The most important configuration setting is the `mode`, which governs how messages are handled by Valves.   
+The most important configuration setting is the `mode`, which governs how messages are handled by Valves.
 
-By default it is `:inline`, so every command or query is handled synchronously.  
+By default it is `:inline`, so every command or query is handled synchronously.  This is the ruby behaviour you know and love.
 
-If it is set to `:async`, commands and queries will be handled using fibers (via the [Async gem](https://socketry.github.io/async/index.html)).
+If it is set to `:async`, commands and queries will be handled asynchronously using fibers (via the [Async gem](https://socketry.github.io/async/index.html)).  Your code should include the "async" gem in its bundle, as Plumbing does not load it by default.
 
-The `timeout` setting is used when performing queries - it defaults to 30s.  
+If it is set to `:threaded`, commands and queries will be handled asynchronously by a thread pool (via [Concurrent Ruby](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent/Promises.html)), using the default `:io` executor.  Your code should include the "concurrent-ruby" gem in its bundle, as Plumbing does not load it by default.
+
+If you want to use threads in a Rails application, set the mode to `:rails`.  This ensures that the work is wrapped in the Rails executor (which prevents multi-threading issues in the framework).  At present, the `:io` executor may cause issues as we may exceed the number of database connections in the Rails' connection pool.  We will fix this at some point in the future.
+
+The `timeout` setting is used when performing queries - it defaults to 30s.
 
 ```ruby
   require "plumbing"
-  puts Plumbing.config.mode 
+  puts Plumbing.config.mode
   # => :inline
 
   Plumbing.configure mode: :async, timeout: 10
 
-  puts Plumbing.config.mode 
+  puts Plumbing.config.mode
   # => :async
 ```
 
-If you are running a test suite, you can temporarily update the configuration by passing a block.  
+If you are running a test suite, you can temporarily update the configuration by passing a block.
 
 ```ruby
   require "plumbing"
-  puts Plumbing.config.mode 
+  puts Plumbing.config.mode
   # => :inline
 
-  Plumbing.configure mode: :async do 
-    puts Plumbing.config.mode 
+  Plumbing.configure mode: :async do
+    puts Plumbing.config.mode
     # => :async
     first_test
     second_test
   end
 
-  puts Plumbing.config.mode 
+  puts Plumbing.config.mode
   # => :inline
 ```
 
 ## Plumbing::Pipeline - transform data through a pipeline
 
-Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.  [Unix pipes](https://en.wikipedia.org/wiki/Pipeline_(Unix)) in Ruby.  
+Define a sequence of operations that proceed in order, passing their output from one operation as the input to another.  [Unix pipes](https://en.wikipedia.org/wiki/Pipeline_(Unix)) in Ruby.
 
-Use `perform` to define a step that takes some input and returns a different output.  
-  Specify `using` to re-use an existing `Plumbing::Pipeline` as a step within this pipeline.  
-Use `execute` to define a step that takes some input, performs an action but passes the input, unchanged, to the next step.  
+Use `perform` to define a step that takes some input and returns a different output.
+  Specify `using` to re-use an existing `Plumbing::Pipeline` as a step within this pipeline.
+Use `execute` to define a step that takes some input, performs an action but passes the input, unchanged, to the next step.
 
-If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  Alternatively, you can define a `pre_condition` to test that the inputs are valid.  
+If you have [dry-validation](https://dry-rb.org/gems/dry-validation/1.10/) installed, you can validate your input using a `Dry::Validation::Contract`.  Alternatively, you can define a `pre_condition` to test that the inputs are valid.
 
-You can also verify that the output generated is as expected by defining a `post_condition`.  
+You can also verify that the output generated is as expected by defining a `post_condition`.
 
 ### Usage:
 
@@ -116,7 +120,7 @@ You can also verify that the output generated is as expected by defining a `post
   end
 
   SayHello.new.call(name: "Alice", email: "alice@example.com")
-  # => Hello Alice - I will now send a load of annoying marketing messages to alice@example.com 
+  # => Hello Alice - I will now send a load of annoying marketing messages to alice@example.com
 
   SayHello.new.call(some: "other data")
   # => Plumbing::PreConditionError
@@ -152,30 +156,30 @@ You can also verify that the output generated is as expected by defining a `post
 
 ## Plumbing::Valve - safe asynchronous objects
 
-An [actor](https://en.wikipedia.org/wiki/Actor_model) defines the messages an object can receive, similar to a regular object.  However, a normal object if accessed concurrently can have data consistency issues and race conditions leading to hard-to-reproduce bugs.  Actors, however, ensure that, no matter which thread (or fiber) is sending the message, the internal processing of the message (the method definition) is handled sequentially.  This means the internal state of an object is never accessed concurrently, eliminating those issues.  
+An [actor](https://en.wikipedia.org/wiki/Actor_model) defines the messages an object can receive, similar to a regular object.  However, a normal object if accessed concurrently can have data consistency issues and race conditions leading to hard-to-reproduce bugs.  Actors, however, ensure that, no matter which thread (or fiber) is sending the message, the internal processing of the message (the method definition) is handled sequentially.  This means the internal state of an object is never accessed concurrently, eliminating those issues.
 
-[Plumbing::Valve](/lib/plumbing/valve.rb) ensures that all messages received are channelled into a concurrency-safe queue. This allows you to take an existing class and ensures that messages received via its public API are made concurrency-safe.  
+[Plumbing::Valve](/lib/plumbing/valve.rb) ensures that all messages received are channelled into a concurrency-safe queue. This allows you to take an existing class and ensures that messages received via its public API are made concurrency-safe.
 
-Include the Plumbing::Valve module into your class, define the messages the objects can respond to and set the `Plumbing` configuration to set the desired concurrency model.  Messages themselves are split into two categories: commands and queries.  
+Include the Plumbing::Valve module into your class, define the messages the objects can respond to and set the `Plumbing` configuration to set the desired concurrency model.  Messages themselves are split into two categories: commands and queries.
 
 - Commands have no return value so when the message is sent, the caller does not block, the task is called asynchronously and the caller continues immediately
 - Queries return a value so the caller blocks until the actor has returned a value
 - However, if you call a query and pass `ignore_result: true` then the query will not block, although you will not be able to access the return value - this is for commands that do something and then return a result based on that work (which you may or may not be interested in - see Plumbing::Pipe#add_observer)
 - None of the above applies if the `Plumbing mode` is set to `:inline` (which is the default) - in this case, the actor behaves like normal ruby code
 
-Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the valve are available in this proxy - so you don't have to worry about callers bypassing the valve's internal context.  
+Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the valve are available in this proxy - so you don't have to worry about callers bypassing the valve's internal context.
 
-Even when using actors, there is one condition where concurrency may cause issues.  If object A makes a query to object B which in turn makes a query back to object A, you will hit a deadlock.  This is because A is waiting on the response from B but B is now querying, and waiting for, A.  This does not apply to commands because they do not wait for a response.  However, when writing queries, be careful who you interact with - the configuration allows you to set a timeout (defaulting to 30s) in case this happens.  
+Even when using actors, there is one condition where concurrency may cause issues.  If object A makes a query to object B which in turn makes a query back to object A, you will hit a deadlock.  This is because A is waiting on the response from B but B is now querying, and waiting for, A.  This does not apply to commands because they do not wait for a response.  However, when writing queries, be careful who you interact with - the configuration allows you to set a timeout (defaulting to 30s) in case this happens.
 
-Also be aware that if you use valves in one place, you need to use them everywhere - especially if you're using threads or ractors (coming soon).  This is because as the valve sends messages to its collaborators, those calls will be made from within the valve's internal context.  If the collaborators are also valves, the subsequent messages will be handled correctly, if not, data consistency bugs could occur.  
+Also be aware that if you use valves in one place, you need to use them everywhere - especially if you're using threads or ractors (coming soon).  This is because as the valve sends messages to its collaborators, those calls will be made from within the valve's internal context.  If the collaborators are also valves, the subsequent messages will be handled correctly, if not, data consistency bugs could occur.
 
-### Usage 
+### Usage
 
 [Defining an actor](/spec/examples/valve_spec.rb)
 
 ```ruby
   require "plumbing"
-  
+
   class Employee
     attr_reader :name, :job_title
 
@@ -193,7 +197,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
       @job_title = "Sales manager"
     end
 
-    def greet_slowly 
+    def greet_slowly
       sleep 0.2
       "H E L L O"
     end
@@ -204,7 +208,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
 
 ```ruby
   require "plumbing"
-    
+
   @person = Employee.start "Alice"
 
   puts @person.name
@@ -217,7 +221,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
   puts @person.job_title
   # => "Sales manager"
 
-  @person.greet_slowly 
+  @person.greet_slowly
   # this will block for 0.2 seconds before returning "H E L L O"
 
   @person.greet_slowly(ignore_result: true)
@@ -230,7 +234,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
   require "plumbing"
   require "async"
 
-  Plumbing.configure mode: :async 
+  Plumbing.configure mode: :async
   @person = Employee.start "Alice"
 
   puts @person.name
@@ -243,20 +247,47 @@ Also be aware that if you use valves in one place, you need to use them everywhe
   puts @person.job_title
   # => "Sales manager" (this will block for 0.5s because #job_title query will not start until the #promote command has completed)
 
-  @person.greet_slowly 
+  @person.greet_slowly
   # this will block for 0.2 seconds before returning "H E L L O"
 
   @person.greet_slowly(ignore_result: true)
   # this will not block and returns nil
 ```
 
+[Using threads](/spec/examples/valve_spec.rb) with concurrency and some parallelism
+
+```ruby
+  require "plumbing"
+  require "concurrent"
+
+  Plumbing.configure mode: :threaded
+  @person = Employee.start "Alice"
+
+  puts @person.name
+  # => "Alice"
+  puts @person.job_title
+  # => "Sales assistant"
+
+  @person.promote
+  # this will return immediately without blocking
+  puts @person.job_title
+  # => "Sales manager" (this will block for 0.5s because #job_title query will not start until the #promote command has completed)
+
+  @person.greet_slowly
+  # this will block for 0.2 seconds before returning "H E L L O"
+
+  @person.greet_slowly(ignore_result: true)
+  # this will not block and returns nil
+```
+
+
 ## Plumbing::Pipe - a composable observer
 
 [Observers](https://ruby-doc.org/3.3.0/stdlibs/observer/Observable.html) in Ruby are a pattern where objects (observers) register their interest in another object (the observable).  This pattern is common throughout programming languages (event listeners in Javascript, the dependency protocol in [Smalltalk](https://en.wikipedia.org/wiki/Smalltalk)).
 
-[Plumbing::Pipe](lib/plumbing/pipe.rb) makes observers "composable".  Instead of simply just registering for notifications from a single observable, we can build sequences of pipes.  These sequences can filter notifications and route them to different listeners, or merge multiple sources into a single stream of notifications.  
+[Plumbing::Pipe](lib/plumbing/pipe.rb) makes observers "composable".  Instead of simply just registering for notifications from a single observable, we can build sequences of pipes.  These sequences can filter notifications and route them to different listeners, or merge multiple sources into a single stream of notifications.
 
-Pipes are implemented as valves, meaning that event notifications can be dispatched asynchronously.  The observer's callback will be triggered from within the pipe's internal context so you should immediately trigger a command on another valve to maintain safety.  
+Pipes are implemented as valves, meaning that event notifications can be dispatched asynchronously.  The observer's callback will be triggered from within the pipe's internal context so you should immediately trigger a command on another valve to maintain safety.
 
 ### Usage
 
@@ -279,7 +310,7 @@ Pipes are implemented as valves, meaning that event notifications can be dispatc
 
   @source = Plumbing::Pipe.start
   @filter = Plumbing::Filter.start source: @source do |event|
-    %w[important urgent].include? event.type 
+    %w[important urgent].include? event.type
   end
   @observer = @filter.add_observer do |event|
     puts event.type
@@ -349,16 +380,16 @@ Pipes are implemented as valves, meaning that event notifications can be dispatc
   require "plumbing"
   require "async"
 
-  Plumbing.configure mode: :async 
+  Plumbing.configure mode: :async
 
-  Sync do 
-    @first_source = Plumbing::Pipe.start 
+  Sync do
+    @first_source = Plumbing::Pipe.start
     @second_source = Plumbing::Pipe.start
 
     @junction = Plumbing::Junction.start @first_source, @second_source
 
     @filter = Plumbing::Filter.start source: @junction do |event|
-      %w[one-one two-two].include? event.type 
+      %w[one-one two-two].include? event.type
     end
 
     @first_source.notify "one-one"
@@ -373,16 +404,16 @@ Pipes are implemented as valves, meaning that event notifications can be dispatc
 Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming)) specifying which messages you expect to be able to send.  Then cast an object into that type, which first tests that the object can respond to those messages and then builds a proxy that responds to just those messages and no others (so no-one can abuse the specific type-casting you have specified).  However, if you take one of these proxies, you can safely re-cast it as another type (as long as the original target object is castable).
 
 
-### Usage 
+### Usage
 
-Define your interface (Person in this example), then cast your objects (instances of PersonData and CarData).  
+Define your interface (Person in this example), then cast your objects (instances of PersonData and CarData).
 
 [Casting objects as duck-types](/spec/examples/rubber_duck_spec.rb):
 ```ruby
   require "plumbing"
 
-  Person = Plumbing::RubberDuck.define :first_name, :last_name, :email 
-  LikesFood = Plumbing::RubberDuck.define :favourite_food 
+  Person = Plumbing::RubberDuck.define :first_name, :last_name, :email
+  LikesFood = Plumbing::RubberDuck.define :favourite_food
 
   PersonData = Struct.new(:first_name, :last_name, :email, :favourite_food)
   CarData = Struct.new(:make, :model, :colour)
@@ -395,14 +426,14 @@ Define your interface (Person in this example), then cast your objects (instance
   @person = @alice.as Person
   @person.first_name
   # => "Alice"
-  @person.email 
+  @person.email
   # => "alice@example.com"
   @person.favourite_food
   # => NoMethodError - #favourite_food is not part of the Person rubber duck (even though it is part of the underlying PersonData struct)
 
   # Cast our Person into a LikesFood rubber duck
-  @hungry = @person.as LikesFood 
-  @hungry.favourite_food 
+  @hungry = @person.as LikesFood
+  @hungry.favourite_food
   # => "Ice cream"
 ```
 
