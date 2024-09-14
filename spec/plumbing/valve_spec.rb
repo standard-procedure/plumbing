@@ -1,6 +1,7 @@
 require "spec_helper"
-require "async"
+
 require_relative "../../lib/plumbing/valve/async"
+require_relative "../../lib/plumbing/valve/threaded"
 
 RSpec.describe Plumbing::Valve do
   # standard:disable Lint/ConstantDefinitionInBlock
@@ -160,7 +161,48 @@ RSpec.describe Plumbing::Valve do
       expect(Time.now - @time).to be < 0.1
 
       # wait for the async task to complete
-      expect(@counter.count).to become_equal_to { 101 }
+      expect(101).to become_equal_to { @counter.count }
+      expect(Time.now - @time).to be > 0.4
+    end
+  end
+
+  context "threaded" do
+    around :example do |example|
+      Sync do
+        Plumbing.configure mode: :threaded, &example
+      end
+    end
+
+    it "sends all queries using threads and waits for the response" do
+      @counter = Counter.start "async counter", initial_value: 100
+      @time = Time.now
+
+      expect(@counter.name).to eq "async counter"
+      expect(@counter.count).to eq 100
+      expect(Time.now - @time).to be < 0.1
+
+      expect(@counter.slow_query).to eq 100
+      expect(Time.now - @time).to be > 0.4
+    end
+
+    it "ignores the response from a query and returns immediately" do
+      @counter = Counter.start "threaded counter", initial_value: 100
+      @time = Time.now
+
+      expect(@counter.slow_query(ignore_result: true)).to be_nil
+
+      expect(Time.now - @time).to be < 0.1
+    end
+
+    it "sends all commands using threads without waiting for the response" do
+      @counter = Counter.start "threaded counter", initial_value: 100
+      @time = Time.now
+
+      @counter.slowly_increment
+      expect(Time.now - @time).to be < 0.1
+
+      # wait for the threaded task to complete
+      expect(101).to become_equal_to { @counter.count }
       expect(Time.now - @time).to be > 0.4
     end
   end

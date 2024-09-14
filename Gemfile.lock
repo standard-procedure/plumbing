@@ -209,6 +209,7 @@ PLATFORMS
 
 DEPENDENCIES
   async
+  concurrent-ruby
   dry-validation
   guard
   guard-bundler
