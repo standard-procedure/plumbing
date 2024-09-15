@@ -184,7 +184,7 @@ Even though inline mode is not asynchronous, you must still use `await` to acces
 
 Using async mode is probably the easiest way to add concurrency to your application.  It uses fibers to allow for "concurrency but not parallelism" - that is execution will happen in the background but your objects or data will never be accessed by two things at the exact same time.
 
-### Threaded actprs
+### Threaded actors
 
 Using threaded (or threaded_rails) mode gives you concurrency and parallelism.  If all your public objects are actors and you are careful about callbacks then the actor model will keep your code safe.  But there are a couple of extra things to consider.
 
