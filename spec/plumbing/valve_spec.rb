@@ -18,12 +18,12 @@ RSpec.describe Plumbing::Valve do
     end
 
     def slowly_increment
-      sleep 0.5
+      sleep 0.2
       @count += 1
     end
 
     def slow_query
-      sleep 0.5
+      sleep 0.2
       @count
     end
 
@@ -42,7 +42,7 @@ RSpec.describe Plumbing::Valve do
     end
 
     def slowly_increment
-      sleep 0.5
+      sleep 0.2
       @count += @step_value
     end
 
@@ -112,7 +112,7 @@ RSpec.describe Plumbing::Valve do
       expect(Time.now - @time).to be < 0.1
 
       expect(@counter.slow_query).to eq 100
-      expect(Time.now - @time).to be > 0.4
+      expect(Time.now - @time).to be > 0.1
     end
 
     it "sends all commands immediately" do
@@ -122,7 +122,7 @@ RSpec.describe Plumbing::Valve do
       @counter.slowly_increment
 
       expect(@counter.count).to eq 101
-      expect(Time.now - @time).to be > 0.4
+      expect(Time.now - @time).to be > 0.1
     end
   end
 
@@ -143,7 +143,7 @@ RSpec.describe Plumbing::Valve do
         expect(Time.now - @time).to be < 0.1
 
         expect(@counter.slow_query).to eq 100
-        expect(Time.now - @time).to be > 0.4
+        expect(Time.now - @time).to be > 0.1
       end
 
       it "performs queries ignoring the response and returning immediately" do
@@ -164,7 +164,7 @@ RSpec.describe Plumbing::Valve do
 
         # wait for the threaded task to complete
         expect(101).to become_equal_to { @counter.count }
-        expect(Time.now - @time).to be > 0.4
+        expect(Time.now - @time).to be > 0.1
       end
     end
   end
