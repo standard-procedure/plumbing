@@ -5,7 +5,7 @@ require "concurrent/promises"
 require_relative "transporter"
 
 module Plumbing
-  module Valve
+  module Actor
     class Threaded
       attr_reader :target
 
@@ -16,7 +16,7 @@ module Plumbing
 
       # Send the message to the target and wrap the result
       def send_message message_name, *args, &block
-        Message.new(@target, message_name, Plumbing::Valve.transporter.marshal(*args), block, Concurrent::MVar.new).tap do |message|
+        Message.new(@target, message_name, Plumbing::Actor.transporter.marshal(*args), block, Concurrent::MVar.new).tap do |message|
           @queue << message
           send_messages if @queue.size == 1
         end
@@ -40,15 +40,15 @@ module Plumbing
 
       class Message < Concurrent::ImmutableStruct.new(:target, :message_name, :packed_args, :unsafe_block, :result)
         def call
-          args = Plumbing::Valve.transporter.unmarshal(*packed_args)
+          args = Plumbing::Actor.transporter.unmarshal(*packed_args)
           value = target.send message_name, *args, &unsafe_block
-          result.put Plumbing::Valve.transporter.marshal(value)
+          result.put Plumbing::Actor.transporter.marshal(value)
         rescue => ex
           result.put ex
         end
 
-        def value
-          value = Plumbing::Valve.transporter.unmarshal(*result.take(Plumbing.config.timeout)).first
+        def await
+          value = Plumbing::Actor.transporter.unmarshal(*result.take(Plumbing.config.timeout)).first
           raise value if value.is_a? Exception
           value
         end
@@ -56,7 +56,7 @@ module Plumbing
     end
 
     def self.transporter
-      @transporter ||= Plumbing::Valve::Transporter.new
+      @transporter ||= Plumbing::Actor::Transporter.new
     end
   end
 end

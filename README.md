@@ -1,16 +1,18 @@
 # Plumbing
 
+Actors, Observers and Data Pipelines.
+
 ## Configuration
 
-The most important configuration setting is the `mode`, which governs how messages are handled by Valves.
+The most important configuration setting is the `mode`, which governs how background tasks are handled.
 
-By default it is `:inline`, so every command or query is handled synchronously.  This is the ruby behaviour you know and love.
+By default it is `:inline`, so every command or query is handled synchronously.  This is the ruby behaviour you know and love (although see the section on `await` below).
 
-If it is set to `:async`, commands and queries will be handled asynchronously using fibers (via the [Async gem](https://socketry.github.io/async/index.html)).  Your code should include the "async" gem in its bundle, as Plumbing does not load it by default.
+`:async` mode handles tasks using fibers (via the [Async gem](https://socketry.github.io/async/index.html)).  Your code should include the "async" gem in its bundle, as Plumbing does not load it by default.
 
-If it is set to `:threaded`, commands and queries will be handled asynchronously by a thread pool (via [Concurrent Ruby](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent/Promises.html)), using the default `:io` executor.  Your code should include the "concurrent-ruby" gem in its bundle, as Plumbing does not load it by default.
+`:threaded` mode handles tasks using a thread pool via [Concurrent Ruby](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent/Promises.html)).  Your code should include the "concurrent-ruby" gem in its bundle, as Plumbing does not load it by default.
 
-If you want to use threads in a Rails application, set the mode to `:rails`.  This ensures that the work is wrapped in the Rails executor (which prevents multi-threading issues in the framework).  At present, the `:io` executor may cause issues as we may exceed the number of database connections in the Rails' connection pool.  We will fix this at some point in the future.
+However, `:threaded` mode is not safe for Ruby on Rails applications.  In this case, use `:rails` mode, which is identical to `:threaded`, except it wraps the tasks in the Rails executor.  This ensures your actors do not interfere with the Rails framework.  Note that the Concurrent Ruby's default `:io` scheduler will create extra threads at times of high demand, which may put pressure on the ActiveRecord database connection pool.  A future version of plumbing will allow the thread pool to be adjusted with a maximum number of threads, preventing contention with the connection pool.
 
 The `timeout` setting is used when performing queries - it defaults to 30s.
 
@@ -154,28 +156,53 @@ You can also verify that the output generated is as expected by defining a `post
   # => ["first", "external", "third"]
 ```
 
-## Plumbing::Valve - safe asynchronous objects
+## Plumbing::Actor - safe asynchronous objects
 
-An [actor](https://en.wikipedia.org/wiki/Actor_model) defines the messages an object can receive, similar to a regular object.  However, a normal object if accessed concurrently can have data consistency issues and race conditions leading to hard-to-reproduce bugs.  Actors, however, ensure that, no matter which thread (or fiber) is sending the message, the internal processing of the message (the method definition) is handled sequentially.  This means the internal state of an object is never accessed concurrently, eliminating those issues.
+An [actor](https://en.wikipedia.org/wiki/Actor_model) defines the messages an object can receive, similar to a regular object.
+However, in traditional object-orientated programming, a thread of execution moves from one object to another.  If there are multiple threads, then each object may be accessed concurrently, leading to race conditions or data-integrity problems - and very hard to track bugs.
 
-[Plumbing::Valve](/lib/plumbing/valve.rb) ensures that all messages received are channelled into a concurrency-safe queue. This allows you to take an existing class and ensures that messages received via its public API are made concurrency-safe.
+Actors are different.  Conceptually, each actor has it's own thread of execution, isolated from every other actor in the system.  When one actor sends a message to another actor, the receiver does not execute its method in the caller's thread.  Instead, it places the message on a queue and waits until its own thread is free to process the work.  If the caller would like to access the return value from the method, then it must wait until the receiver has finished processing.
 
-Include the Plumbing::Valve module into your class, define the messages the objects can respond to and set the `Plumbing` configuration to set the desired concurrency model.  Messages themselves are split into two categories: commands and queries.
+This means each actor is only ever accessed by a single thread and the vast majority of concurrency issues are eliminated.
 
-- Commands have no return value so when the message is sent, the caller does not block, the task is called asynchronously and the caller continues immediately
-- Queries return a value so the caller blocks until the actor has returned a value
-- However, if you call a query and pass `ignore_result: true` then the query will not block, although you will not be able to access the return value - this is for commands that do something and then return a result based on that work (which you may or may not be interested in - see Plumbing::Pipe#add_observer)
-- None of the above applies if the `Plumbing mode` is set to `:inline` (which is the default) - in this case, the actor behaves like normal ruby code
+[Plumbing::Actor](/lib/plumbing/actor.rb) allows you to define the `async` public interface to your objects.  Calling `.start` builds a proxy to the actual instance of your object and ensures that any messages sent are handled in a manner appropriate to the current mode - immediately for inline mode, using fibers for async mode and using threads for threaded and rails mode.
 
-Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the valve are available in this proxy - so you don't have to worry about callers bypassing the valve's internal context.
+When sending messages to an actor, this just works.
+
+However, as the caller, you do not have direct access to the return values of the messages that you send.  Instead, you must call `#await` - or alternatively, wrap your call in `await { ... }`.  `await` is added in to ruby's `Kernel` so it is available everywhere.  This then makes the caller's thread block until the receiver's thread has finished its work and returned a value.  Or if the receiver raises an exception, that exception is then re-raised in the calling thread.
+
+The actor model does not eliminate every possible concurrency issue.  If you use `await`, it is possible to deadlock yourself.
+Actor A, running in Thread 1, sends a message to Actor B and then awaits the result, meaning Thread 1 is blocked.  Actor B, running in Thread 2, starts to work, but needs to ask Actor A a question.  So it sends a message to Actor A and awaits the result.  Thread 2 is now blocked, waiting for Actor A to respond.  But Actor A, running in Thread 1, is blocked, waiting for Actor B to respond.
+
+This potential deadlock only occurs if you use `await` and have actors that call back in to each other.  If your objects are strictly layered, or you never use `await` (perhaps, instead using a Pipe to observe events), then this particular deadlock should not occur.  However, just in case, every call to `await` has a timeout defaulting to 30s.
+
+### Inline actors
+
+Even though inline mode is not asynchronous, you must still use `await` to access the results from another actor.  However, as deadlocks are impossible in a single thread, there is no timeout.
+
+### Async actors
+
+Using async mode is probably the easiest way to add concurrency to your application.  It uses fibers to allow for "concurrency but not parallelism" - that is execution will happen in the background but your objects or data will never be accessed by two things at the exact same time.
+
+### Threaded actprs
+
+Using threaded (or rails) mode gives you concurrency and parallelism.  If all your public objects are actors and you are careful about callbacks then the actor model will keep your code safe.  But there are a couple of extra things to consider.
+
+Firstly, when you pass parameters or return results between threads, those objects are "transported" across the boundaries.
+Most objects are `clone`d. Hashes, keyword arguments and arrays have their contents recursively transported.  And any object that uses `GlobalID::Identification` (for example, ActiveRecord models) are marshalled into a GlobalID, then unmarshalled back in to their original object.  This is to prevent the same object from being amended in both the caller and receiver's threads.
+Secondly, when you pass a block (or Proc parameter) to another actor, the block/proc will be executed in the receiver's thread.  This means you must not access any variables that would normally be in scope for your block (whether local variables or instance variables of other objects - see note below)  This is because you will be accessing them from a different thread to where they were defined, leading to potential race conditions.  And, if you access any actors, you must not use `await` or you risk a deadlock.  If you do pass a block or proc parameter, you should limit your actions to sending a message to other actors without awaiting the results.
+
+(Note: we break that rule in the specs for the Pipe object - we use a block observer that sets the value on a local variable.  That's because it is a controlled situation where we know there are only two threads involved and we are explicitly waiting for the second thread to complete.  For almost every app that uses actors, there will be multiple threads and it will be impossible to predict the access patterns).
+
+Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the actor are available in this proxy - so you don't have to worry about callers bypassing the actor's internal context.
 
 Even when using actors, there is one condition where concurrency may cause issues.  If object A makes a query to object B which in turn makes a query back to object A, you will hit a deadlock.  This is because A is waiting on the response from B but B is now querying, and waiting for, A.  This does not apply to commands because they do not wait for a response.  However, when writing queries, be careful who you interact with - the configuration allows you to set a timeout (defaulting to 30s) in case this happens.
 
-Also be aware that if you use valves in one place, you need to use them everywhere - especially if you're using threads or ractors (coming soon).  This is because as the valve sends messages to its collaborators, those calls will be made from within the valve's internal context.  If the collaborators are also valves, the subsequent messages will be handled correctly, if not, data consistency bugs could occur.
+Also be aware that if you use actors in one place, you need to use them everywhere - especially if you're using threads or ractors (coming soon).  This is because as the actor sends messages to its collaborators, those calls will be made from within the actor's internal context.  If the collaborators are also actors, the subsequent messages will be handled correctly, if not, data consistency bugs could occur.
 
 ### Usage
 
-[Defining an actor](/spec/examples/valve_spec.rb)
+[Defining an actor](/spec/examples/actor_spec.rb)
 
 ```ruby
   require "plumbing"
@@ -183,7 +210,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
   class Employee
     attr_reader :name, :job_title
 
-    include Plumbing::Valve
+    include Plumbing::Actor
     query :name, :job_title, :greet_slowly
     command :promote
 
@@ -202,84 +229,27 @@ Also be aware that if you use valves in one place, you need to use them everywhe
       "H E L L O"
     end
   end
-```
-
-[Acting inline](/spec/examples/valve_spec.rb) with no concurrency
-
-```ruby
-  require "plumbing"
 
   @person = Employee.start "Alice"
 
-  puts @person.name
-  # => "Alice"
-  puts @person.job_title
-  # => "Sales assistant"
+  await { @person.name }
+  # =>  "Alice"
+  await { @person.job_title }
+  # => "Sales assistant"
 
+  # `greet_slowly` is a query so will block until a response is received
+  await { @person.greet_slowly }
+  # =>  "H E L L O"
+
+  # we're not awaiting the result, so this will run in the background (unless we're using inline mode)
+  @person.greet_slowly
+
+  # This will run in the background
   @person.promote
-  # this will block for 0.5 seconds
-  puts @person.job_title
+  # this will block, as we wait for the result from #job_title and #job_title will not run until after #promote has completed
+  await { @person.job_title }
   # => "Sales manager"
-
-  @person.greet_slowly
-  # this will block for 0.2 seconds before returning "H E L L O"
-
-  @person.greet_slowly(ignore_result: true)
-  # this will block for 0.2 seconds (as the mode is :inline) before returning nil
 ```
-
-[Using fibers](/spec/examples/valve_spec.rb) with concurrency but no parallelism
-
-```ruby
-  require "plumbing"
-  require "async"
-
-  Plumbing.configure mode: :async
-  @person = Employee.start "Alice"
-
-  puts @person.name
-  # => "Alice"
-  puts @person.job_title
-  # => "Sales assistant"
-
-  @person.promote
-  # this will return immediately without blocking
-  puts @person.job_title
-  # => "Sales manager" (this will block for 0.5s because #job_title query will not start until the #promote command has completed)
-
-  @person.greet_slowly
-  # this will block for 0.2 seconds before returning "H E L L O"
-
-  @person.greet_slowly(ignore_result: true)
-  # this will not block and returns nil
-```
-
-[Using threads](/spec/examples/valve_spec.rb) with concurrency and some parallelism
-
-```ruby
-  require "plumbing"
-  require "concurrent"
-
-  Plumbing.configure mode: :threaded
-  @person = Employee.start "Alice"
-
-  puts @person.name
-  # => "Alice"
-  puts @person.job_title
-  # => "Sales assistant"
-
-  @person.promote
-  # this will return immediately without blocking
-  puts @person.job_title
-  # => "Sales manager" (this will block for 0.5s because #job_title query will not start until the #promote command has completed)
-
-  @person.greet_slowly
-  # this will block for 0.2 seconds before returning "H E L L O"
-
-  @person.greet_slowly(ignore_result: true)
-  # this will not block and returns nil
-```
-
 
 ## Plumbing::Pipe - a composable observer
 
@@ -287,7 +257,7 @@ Also be aware that if you use valves in one place, you need to use them everywhe
 
 [Plumbing::Pipe](lib/plumbing/pipe.rb) makes observers "composable".  Instead of simply just registering for notifications from a single observable, we can build sequences of pipes.  These sequences can filter notifications and route them to different listeners, or merge multiple sources into a single stream of notifications.
 
-Pipes are implemented as valves, meaning that event notifications can be dispatched asynchronously.  The observer's callback will be triggered from within the pipe's internal context so you should immediately trigger a command on another valve to maintain safety.
+Pipes are implemented as actors, meaning that event notifications can be dispatched asynchronously.  The observer's callback will be triggered from within the pipe's internal context so you should immediately trigger a command on another actor to maintain safety.
 
 ### Usage
 
@@ -488,7 +458,7 @@ Then:
 ```ruby
 require 'plumbing'
 
-# Set the mode for your Valves and Pipes
+# Set the mode for your Actors and Pipes
 Plumbing.config mode: :async
 ```
 

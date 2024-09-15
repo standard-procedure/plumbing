@@ -1,8 +1,8 @@
 module Plumbing
-  module Valve
+  module Actor
     ::Kernel.class_eval do
       def await &block
-        block.call.value
+        block.call.await
       end
     end
   end

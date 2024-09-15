@@ -1,9 +1,7 @@
-require "concurrent/array"
-
 module Plumbing
   # A basic pipe
   class Pipe
-    include Plumbing::Valve
+    include Plumbing::Actor
 
     async :notify, :<<, :remove_observer, :add_observer, :is_observer?, :shutdown
 
@@ -69,7 +67,7 @@ module Plumbing
     end
 
     def observers
-      @observers ||= Concurrent::Array.new
+      @observers ||= []
     end
   end
 end

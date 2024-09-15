@@ -1,7 +1,7 @@
 require "global_id"
 
 module Plumbing
-  module Valve
+  module Actor
     class Transporter
       def marshal *arguments
         pack_array arguments
@@ -18,7 +18,7 @@ module Plumbing
         when GlobalID::Identification then pack_global_id argument
         when Array then pack_array argument
         when Hash then pack_hash argument
-        else argument
+        else argument.clone
         end
       end
 

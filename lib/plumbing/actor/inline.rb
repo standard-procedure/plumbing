@@ -1,5 +1,5 @@
 module Plumbing
-  module Valve
+  module Actor
     class Inline
       def initialize target
         @target = target
@@ -7,17 +7,14 @@ module Plumbing
 
       # Send the message to the target and wrap the result
       def send_message(message_name, *, &)
-        result = @target.send(message_name, *, &)
-        Result.new(result)
+        value = @target.send(message_name, *, &)
+        Result.new(value)
       rescue => ex
         Result.new(ex)
       end
 
-      Result = Data.define(:result) do
-        def value
-          raise result if result.is_a? Exception
-          result
-        end
+      Result = Data.define(:value) do
+        def await = value.is_a?(Exception) ? raise(value) : value
       end
       private_constant :Result
     end

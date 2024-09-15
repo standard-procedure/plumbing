@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.shared_examples "an example valve" do |runs_in_background|
+RSpec.shared_examples "an example actor" do |runs_in_background|
   it "queries an object" do
     @person = Employee.start "Alice"
 
@@ -28,10 +28,10 @@ RSpec.shared_examples "an example valve" do |runs_in_background|
   end
 end
 
-RSpec.describe "Valve example: " do
+RSpec.describe "Actor example: " do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Employee
-    include Plumbing::Valve
+    include Plumbing::Actor
     async :name, :job_title, :greet_slowly, :promote
 
     def initialize(name)
@@ -58,7 +58,7 @@ RSpec.describe "Valve example: " do
       Plumbing.configure mode: :inline, &example
     end
 
-    it_behaves_like "an example valve", false
+    it_behaves_like "an example actor", false
   end
 
   context "async mode" do
@@ -68,7 +68,7 @@ RSpec.describe "Valve example: " do
       end
     end
 
-    it_behaves_like "an example valve", true
+    it_behaves_like "an example actor", true
   end
 
   context "threaded mode" do
@@ -76,6 +76,6 @@ RSpec.describe "Valve example: " do
       Plumbing.configure mode: :threaded, &example
     end
 
-    it_behaves_like "an example valve", true
+    it_behaves_like "an example actor", true
   end
 end

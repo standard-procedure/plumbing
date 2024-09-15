@@ -3,7 +3,7 @@ require "async/semaphore"
 require "timeout"
 
 module Plumbing
-  module Valve
+  module Actor
     class Async
       attr_reader :target
 
@@ -22,8 +22,8 @@ module Plumbing
       end
 
       Result = Data.define(:task) do
-        def value
-          Timeout.timeout(Plumbing::Valve.timeout) do
+        def await
+          Timeout.timeout(Plumbing::Actor.timeout) do
             task.wait
           end
         end

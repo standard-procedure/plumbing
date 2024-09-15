@@ -1,13 +1,13 @@
 require "spec_helper"
 
-require_relative "../../lib/plumbing/valve/async"
-require_relative "../../lib/plumbing/valve/threaded"
-require_relative "../../lib/plumbing/valve/rails"
+require_relative "../../lib/plumbing/actor/async"
+require_relative "../../lib/plumbing/actor/threaded"
+require_relative "../../lib/plumbing/actor/rails"
 
-RSpec.describe Plumbing::Valve do
+RSpec.describe Plumbing::Actor do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Counter
-    include Plumbing::Valve
+    include Plumbing::Actor
     async :name, :count, :slow_query, "slowly_increment", "raises_error"
     attr_reader :name, :count
 
@@ -70,10 +70,10 @@ RSpec.describe Plumbing::Valve do
 
     @step_counter = StepCounter.start "step counter", initial_value: 100, step_value: 10
 
-    expect(@step_counter.count.value).to eq 100
-    expect(@step_counter.step_value.value).to eq 10
+    expect(@step_counter.count.await).to eq 100
+    expect(@step_counter.step_value.await).to eq 10
     @step_counter.slowly_increment
-    expect(@step_counter.count.value).to eq 110
+    expect(@step_counter.count.await).to eq 110
   end
 
   context "inline" do
@@ -85,11 +85,11 @@ RSpec.describe Plumbing::Valve do
       @counter = Counter.start "inline counter", initial_value: 100
       @time = Time.now
 
-      expect(@counter.name.value).to eq "inline counter"
-      expect(@counter.count.value).to eq 100
+      expect(@counter.name.await).to eq "inline counter"
+      expect(@counter.count.await).to eq 100
       expect(Time.now - @time).to be < 0.1
 
-      expect(@counter.slow_query.value).to eq 100
+      expect(@counter.slow_query.await).to eq 100
       expect(Time.now - @time).to be > 0.1
     end
 
@@ -99,7 +99,7 @@ RSpec.describe Plumbing::Valve do
 
       @counter.slowly_increment
 
-      expect(@counter.count.value).to eq 101
+      expect(@counter.count.await).to eq 101
       expect(Time.now - @time).to be > 0.1
     end
   end
@@ -116,11 +116,11 @@ RSpec.describe Plumbing::Valve do
         @counter = Counter.start "async counter", initial_value: 100
         @time = Time.now
 
-        expect(@counter.name.value).to eq "async counter"
-        expect(@counter.count.value).to eq 100
+        expect(@counter.name.await).to eq "async counter"
+        expect(@counter.count.await).to eq 100
         expect(Time.now - @time).to be < 0.1
 
-        expect(@counter.slow_query.value).to eq 100
+        expect(@counter.slow_query.await).to eq 100
         expect(Time.now - @time).to be > 0.1
       end
 
@@ -141,14 +141,14 @@ RSpec.describe Plumbing::Valve do
         expect(Time.now - @time).to be < 0.1
 
         # wait for the background task to complete
-        expect(101).to become_equal_to { @counter.count.value }
+        expect(101).to become_equal_to { @counter.count.await }
         expect(Time.now - @time).to be > 0.1
       end
 
       it "re-raises exceptions when checking the result" do
         @counter = Counter.start "failure"
 
-        expect { @counter.raises_error.value }.to raise_error "I'm an error"
+        expect { @counter.raises_error.await }.to raise_error "I'm an error"
       end
 
       it "does not raise exceptions if ignoring the result" do
@@ -178,7 +178,7 @@ RSpec.describe Plumbing::Valve do
     end
 
     class Actor
-      include Plumbing::Valve
+      include Plumbing::Actor
       async :get_object_id, :get_object
 
       private def get_object_id(record) = record.object_id
@@ -190,7 +190,7 @@ RSpec.describe Plumbing::Valve do
       @actor = Actor.start
       @record = Record.new "999"
 
-      @object_id = @actor.get_object_id(@record).value
+      @object_id = @actor.get_object_id(@record).await
 
       expect(@object_id).to_not eq @record.object_id
     end
@@ -199,7 +199,7 @@ RSpec.describe Plumbing::Valve do
       @actor = Actor.start
       @record = Record.new "999"
 
-      @object = @actor.get_object(@record).value
+      @object = @actor.get_object(@record).await
 
       expect(@object.id).to eq @record.id
       expect(@object.object_id).to_not eq @record.object_id

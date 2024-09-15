@@ -1,7 +1,7 @@
 require_relative "threaded"
 
 module Plumbing
-  module Valve
+  module Actor
     class Rails < Threaded
       protected
 
