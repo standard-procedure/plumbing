@@ -6,7 +6,7 @@ RSpec.describe "Pipe examples" do
     @source = Plumbing::Pipe.start
 
     @result = []
-    @observer = @source.add_observer do |event|
+    @source.add_observer do |event|
       @result << event.type
     end
 
@@ -22,7 +22,7 @@ RSpec.describe "Pipe examples" do
     end
 
     @result = []
-    @observer = @filter.add_observer do |event|
+    @filter.add_observer do |event|
       @result << event.type
     end
 
@@ -55,7 +55,7 @@ RSpec.describe "Pipe examples" do
     @filter = EveryThirdEvent.new(source: @source)
 
     @result = []
-    @observer = @filter.add_observer do |event|
+    @filter.add_observer do |event|
       @result << event.type
     end
 
@@ -73,7 +73,7 @@ RSpec.describe "Pipe examples" do
     @junction = Plumbing::Junction.start @first_source, @second_source
 
     @result = []
-    @observer = @junction.add_observer do |event|
+    @junction.add_observer do |event|
       @result << event.type
     end
 

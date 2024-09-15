@@ -13,31 +13,26 @@ module Plumbing
         @semaphore = ::Async::Semaphore.new(1)
       end
 
-      # Ask the target to answer the given message
-      def ask(message, *args, **params, &block)
+      # Send the message to the target and wrap the result
+      def send_message message_name, *args, &block
         task = @semaphore.async do
-          @target.send message, *args, **params, &block
+          @target.send message_name, *args, &block
         end
-        Timeout.timeout(timeout) do
-          task.wait
-        end
+        Result.new(task)
       end
 
-      # Tell the target to execute the given message
-      def tell(message, *args, **params, &block)
-        @semaphore.async do |task|
-          @target.send message, *args, **params, &block
-        rescue
-          nil
+      Result = Data.define(:task) do
+        def value
+          Timeout.timeout(Plumbing::Valve.timeout) do
+            task.wait
+          end
         end
-        nil
       end
+      private_constant :Result
+    end
 
-      private
-
-      def timeout
-        Plumbing.config.timeout
-      end
+    def self.timeout
+      Plumbing.config.timeout
     end
   end
 end

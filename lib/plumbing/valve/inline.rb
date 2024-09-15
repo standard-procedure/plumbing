@@ -5,16 +5,21 @@ module Plumbing
         @target = target
       end
 
-      # Ask the target to answer the given message
-      def ask(message, ...)
-        @target.send(message, ...)
+      # Send the message to the target and wrap the result
+      def send_message(message_name, *, &)
+        result = @target.send(message_name, *, &)
+        Result.new(result)
+      rescue => ex
+        Result.new(ex)
       end
 
-      # Tell the target to execute the given message
-      def tell(message, ...)
-        @target.send(message, ...)
-        nil
+      Result = Data.define(:result) do
+        def value
+          raise result if result.is_a? Exception
+          result
+        end
       end
+      private_constant :Result
     end
   end
 end

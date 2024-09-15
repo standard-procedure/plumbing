@@ -4,17 +4,18 @@ RSpec.shared_examples "an example valve" do |runs_in_background|
   it "queries an object" do
     @person = Employee.start "Alice"
 
-    expect(@person.name).to eq "Alice"
-    expect(@person.job_title).to eq "Sales assistant"
+    expect(await { @person.name }).to eq "Alice"
+    expect(await { @person.job_title }).to eq "Sales assistant"
 
     @time = Time.now
     # `greet_slowly` is a query so will block until a response is received
-    expect(@person.greet_slowly).to eq "H E L L O"
+    expect(await { @person.greet_slowly }).to eq "H E L L O"
     expect(Time.now - @time).to be > 0.1
 
     @time = Time.now
-    # we're ignoring the result so this will not block (except :inline mode which does not run in the background)
-    expect(@person.greet_slowly(ignore_result: true)).to be_nil
+    # we're not awaiting the result, so this should run in the background (unless we're using inline mode)
+    @person.greet_slowly
+
     expect(Time.now - @time).to be < 0.1 if runs_in_background
     expect(Time.now - @time).to be > 0.1 if !runs_in_background
   end
@@ -22,7 +23,7 @@ RSpec.shared_examples "an example valve" do |runs_in_background|
   it "commands an object" do
     @person = Employee.start "Alice"
     @person.promote
-    @job_title = @person.job_title
+    @job_title = await { @person.job_title }
     expect(@job_title).to eq "Sales manager"
   end
 end
@@ -31,8 +32,7 @@ RSpec.describe "Valve example: " do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Employee
     include Plumbing::Valve
-    query :name, :job_title, :greet_slowly
-    command :promote
+    async :name, :job_title, :greet_slowly, :promote
 
     def initialize(name)
       @name = name

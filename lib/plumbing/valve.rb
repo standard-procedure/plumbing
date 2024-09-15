@@ -1,3 +1,4 @@
+require_relative "valve/kernel"
 require_relative "valve/inline"
 
 module Plumbing
@@ -13,23 +14,15 @@ module Plumbing
         build_proxy_for(new(*, **, &))
       end
 
-      # Define the queries that this valve can answer
-      # @param names [Array<Symbol>] the names of the queries
-      def query(*names) = queries.concat(names.map(&:to_sym))
+      # Define the async messages that this valve can respond to
+      # @param names [Array<Symbol>] the names of the async messages
+      def async(*names) = async_messages.concat(names.map(&:to_sym))
 
-      # List the queries that this valve can answer
-      def queries = @queries ||= []
-
-      # Define the commands that this valve can execute
-      # @param names [Array<Symbol>] the names of the commands
-      def command(*names) = commands.concat(names.map(&:to_sym))
-
-      # List the commands that this valve can execute
-      def commands = @commands ||= []
+      # List the async messages that this valve can respond to
+      def async_messages = @async_messages ||= []
 
       def inherited subclass
-        subclass.commands.concat commands
-        subclass.queries.concat queries
+        subclass.async_messages.concat async_messages
       end
 
       private
@@ -50,18 +43,9 @@ module Plumbing
 
       def build_proxy_class
         Class.new(proxy_base_class).tap do |proxy_class|
-          queries.each do |query|
-            proxy_class.define_method query do |*args, ignore_result: false, **params, &block|
-              ignore_result ? tell(query, *args, **params, &block) : ask(query, *args, **params, &block)
-            end
-          end
-
-          commands.each do |command|
-            proxy_class.define_method command do |*args, **params, &block|
-              tell(command, *args, **params, &block)
-              nil
-            rescue
-              nil
+          async_messages.each do |message|
+            proxy_class.define_method message do |*args, &block|
+              send_message(message, *args, &block)
             end
           end
         end

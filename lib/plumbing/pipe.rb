@@ -1,10 +1,11 @@
+require "concurrent/array"
+
 module Plumbing
   # A basic pipe
   class Pipe
     include Plumbing::Valve
 
-    command :notify, :<<, :remove_observer, :shutdown
-    query :add_observer, :is_observer?
+    async :notify, :<<, :remove_observer, :add_observer, :is_observer?, :shutdown
 
     # Push an event into the pipe
     # @param event [Plumbing::Event] the event to push into the pipe
@@ -68,7 +69,7 @@ module Plumbing
     end
 
     def observers
-      @observers ||= []
+      @observers ||= Concurrent::Array.new
     end
   end
 end

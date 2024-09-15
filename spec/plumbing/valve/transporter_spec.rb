@@ -1,6 +1,7 @@
 require "spec_helper"
+require_relative "../../../lib/plumbing/valve/transporter"
 
-RSpec.describe Plumbing::Transporter do
+RSpec.describe Plumbing::Valve::Transporter do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Record
     include GlobalID::Identification

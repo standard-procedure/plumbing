@@ -2,7 +2,6 @@
 
 module Plumbing
   require_relative "plumbing/config"
-  require_relative "plumbing/transporter"
   require_relative "plumbing/valve"
   require_relative "plumbing/rubber_duck"
   require_relative "plumbing/types"

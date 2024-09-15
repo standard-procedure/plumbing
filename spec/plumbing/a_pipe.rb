@@ -1,10 +1,12 @@
 RSpec.shared_examples "a pipe" do
   it "adds a block observer" do
     @pipe = described_class.start
-    @observer = @pipe.add_observer do |event|
-      puts event.type
+    @observer = await do
+      @pipe.add_observer do |event|
+        puts event.type
+      end
     end
-    expect(@pipe.is_observer?(@observer)).to eq true
+    expect(await { @pipe.is_observer?(@observer) }).to eq true
   end
 
   it "adds a callable observer" do
@@ -13,13 +15,13 @@ RSpec.shared_examples "a pipe" do
 
     @pipe.add_observer @proc
 
-    expect(@pipe.is_observer?(@proc)).to eq true
+    expect(await { @pipe.is_observer?(@proc) }).to eq true
   end
 
   it "does not allow an observer without a #call method" do
     @pipe = described_class.start
 
-    expect { @pipe.add_observer(Object.new) }.to raise_error(TypeError)
+    expect { await { @pipe.add_observer(Object.new) } }.to raise_error(TypeError)
   end
 
   it "removes an observer" do
@@ -28,10 +30,10 @@ RSpec.shared_examples "a pipe" do
 
     @pipe.remove_observer @proc
 
-    expect(@pipe.is_observer?(@proc)).to eq false
+    expect(await { @pipe.is_observer?(@proc) }).to eq false
   end
 
-  it "does not send notifications for objects  which are not events" do
+  it "does not send notifications for objects which are not events" do
     @pipe = described_class.start
     @results = []
     @observer = @pipe.add_observer do |event|
@@ -40,7 +42,7 @@ RSpec.shared_examples "a pipe" do
 
     @pipe << Object.new
 
-    sleep 0.5
+    sleep 0.1
     expect(@results).to eq []
   end
 
@@ -101,6 +103,6 @@ RSpec.shared_examples "a pipe" do
 
     @pipe.shutdown
 
-    expect(@pipe.is_observer?(@observer)).to eq false
+    expect(await { @pipe.is_observer?(@observer) }).to eq false
   end
 end

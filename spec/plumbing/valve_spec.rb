@@ -8,14 +8,15 @@ RSpec.describe Plumbing::Valve do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Counter
     include Plumbing::Valve
-    query :name, :count, :am_i_failing?, :slow_query
-    command "slowly_increment", "raises_error"
+    async :name, :count, :slow_query, "slowly_increment", "raises_error"
     attr_reader :name, :count
 
     def initialize name, initial_value: 0
       @name = name
       @count = initial_value
     end
+
+    protected
 
     def slowly_increment
       sleep 0.2
@@ -27,19 +28,19 @@ RSpec.describe Plumbing::Valve do
       @count
     end
 
-    def am_i_failing? = raise "I'm a failure"
-
     def raises_error = raise "I'm an error"
   end
 
   class StepCounter < Counter
-    query :step_value
+    async :step_value
     attr_reader :step_value
 
     def initialize name, initial_value: 0, step_value: 5
       super(name, initial_value: initial_value)
       @step_value = step_value
     end
+
+    protected
 
     def slowly_increment
       sleep 0.2
@@ -52,30 +53,8 @@ RSpec.describe Plumbing::Valve do
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
-  it "knows which queries are defined" do
-    expect(Counter.queries).to eq [:name, :count, :am_i_failing?, :slow_query]
-  end
-
-  it "knows which commands are defined" do
-    expect(Counter.commands).to eq [:slowly_increment, :raises_error]
-  end
-
-  it "raises exceptions from queries" do
-    @counter = Counter.start "failure"
-
-    expect { @counter.am_i_failing? }.to raise_error "I'm a failure"
-  end
-
-  it "does not raise exceptions from commands" do
-    @counter = Counter.start "failure"
-
-    expect { @counter.raises_error }.not_to raise_error
-  end
-
-  it "raises exceptions from queries" do
-    @counter = Counter.start "failure"
-
-    expect { @counter.am_i_failing? }.to raise_error "I'm a failure"
+  it "knows which async messages are understood" do
+    expect(Counter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error]
   end
 
   it "reuses existing proxy classes" do
@@ -87,15 +66,14 @@ RSpec.describe Plumbing::Valve do
   end
 
   it "includes commands and queries from the superclass" do
-    expect(StepCounter.queries).to eq [:name, :count, :am_i_failing?, :slow_query, :step_value]
-    expect(StepCounter.commands).to eq [:slowly_increment, :raises_error]
+    expect(StepCounter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error, :step_value]
 
     @step_counter = StepCounter.start "step counter", initial_value: 100, step_value: 10
 
-    expect(@step_counter.count).to eq 100
-    expect(@step_counter.step_value).to eq 10
+    expect(@step_counter.count.value).to eq 100
+    expect(@step_counter.step_value.value).to eq 10
     @step_counter.slowly_increment
-    expect(@step_counter.count).to eq 110
+    expect(@step_counter.count.value).to eq 110
   end
 
   context "inline" do
@@ -103,15 +81,15 @@ RSpec.describe Plumbing::Valve do
       Plumbing.configure mode: :inline, &example
     end
 
-    it "sends all queries immediately" do
+    it "returns the result from a message immediately" do
       @counter = Counter.start "inline counter", initial_value: 100
       @time = Time.now
 
-      expect(@counter.name).to eq "inline counter"
-      expect(@counter.count).to eq 100
+      expect(@counter.name.value).to eq "inline counter"
+      expect(@counter.count.value).to eq 100
       expect(Time.now - @time).to be < 0.1
 
-      expect(@counter.slow_query).to eq 100
+      expect(@counter.slow_query.value).to eq 100
       expect(Time.now - @time).to be > 0.1
     end
 
@@ -121,7 +99,7 @@ RSpec.describe Plumbing::Valve do
 
       @counter.slowly_increment
 
-      expect(@counter.count).to eq 101
+      expect(@counter.count.value).to eq 101
       expect(Time.now - @time).to be > 0.1
     end
   end
@@ -138,11 +116,11 @@ RSpec.describe Plumbing::Valve do
         @counter = Counter.start "async counter", initial_value: 100
         @time = Time.now
 
-        expect(@counter.name).to eq "async counter"
-        expect(@counter.count).to eq 100
+        expect(@counter.name.value).to eq "async counter"
+        expect(@counter.count.value).to eq 100
         expect(Time.now - @time).to be < 0.1
 
-        expect(@counter.slow_query).to eq 100
+        expect(@counter.slow_query.value).to eq 100
         expect(Time.now - @time).to be > 0.1
       end
 
@@ -150,7 +128,7 @@ RSpec.describe Plumbing::Valve do
         @counter = Counter.start "threaded counter", initial_value: 100
         @time = Time.now
 
-        expect(@counter.slow_query(ignore_result: true)).to be_nil
+        @counter.slow_query
 
         expect(Time.now - @time).to be < 0.1
       end
@@ -162,10 +140,69 @@ RSpec.describe Plumbing::Valve do
         @counter.slowly_increment
         expect(Time.now - @time).to be < 0.1
 
-        # wait for the threaded task to complete
-        expect(101).to become_equal_to { @counter.count }
+        # wait for the background task to complete
+        expect(101).to become_equal_to { @counter.count.value }
         expect(Time.now - @time).to be > 0.1
       end
+
+      it "re-raises exceptions when checking the result" do
+        @counter = Counter.start "failure"
+
+        expect { @counter.raises_error.value }.to raise_error "I'm an error"
+      end
+
+      it "does not raise exceptions if ignoring the result" do
+        @counter = Counter.start "failure"
+
+        expect { @counter.raises_error }.not_to raise_error
+      end
+    end
+  end
+
+  context "threaded" do
+    around :example do |example|
+      Plumbing.configure mode: :threaded, &example
+    end
+
+    # standard:disable Lint/ConstantDefinitionInBlock
+    class Record
+      include GlobalID::Identification
+      attr_reader :id
+      def initialize id
+        @id = id
+      end
+
+      def == other
+        other.id == @id
+      end
+    end
+
+    class Actor
+      include Plumbing::Valve
+      async :get_object_id, :get_object
+
+      private def get_object_id(record) = record.object_id
+      private def get_object(record) = record
+    end
+    # standard:enable Lint/ConstantDefinitionInBlock
+
+    it "packs and unpacks arguments when sending them across threads" do
+      @actor = Actor.start
+      @record = Record.new "999"
+
+      @object_id = @actor.get_object_id(@record).value
+
+      expect(@object_id).to_not eq @record.object_id
+    end
+
+    it "packs and unpacks results when sending them across threads" do
+      @actor = Actor.start
+      @record = Record.new "999"
+
+      @object = @actor.get_object(@record).value
+
+      expect(@object.id).to eq @record.id
+      expect(@object.object_id).to_not eq @record.object_id
     end
   end
 end
