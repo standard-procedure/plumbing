@@ -51,6 +51,17 @@ RSpec.describe Plumbing::Actor do
       raise "I'm a failure"
     end
   end
+
+  class WhoAmI
+    include Plumbing::Actor
+    async :me_as_actor, :me_as_self
+
+    private
+
+    def me_as_actor = as_actor
+
+    def me_as_self = self
+  end
   # standard:enable Lint/ConstantDefinitionInBlock
 
   it "knows which async messages are understood" do
@@ -74,6 +85,13 @@ RSpec.describe Plumbing::Actor do
     expect(@step_counter.step_value.await).to eq 10
     @step_counter.slowly_increment
     expect(@step_counter.count.await).to eq 110
+  end
+
+  it "can access its own proxy" do
+    @actor = WhoAmI.start
+
+    expect(await { @actor.me_as_self }).to_not eq @actor
+    expect(await { @actor.me_as_actor }).to eq @actor
   end
 
   context "inline" do

@@ -10,8 +10,11 @@ module Plumbing
     module ClassMethods
       # Create a new actor instance and build a proxy for it using the current mode
       # @return [Object] the proxy for the actor instance
-      def start(*, **, &)
-        build_proxy_for(new(*, **, &))
+      def start(...)
+        instance = new(...)
+        build_proxy_for(instance).tap do |proxy|
+          instance.send :"proxy=", proxy
+        end
       end
 
       # Define the async messages that this actor can respond to
@@ -41,7 +44,7 @@ module Plumbing
         inline: "Plumbing::Actor::Inline",
         async: "Plumbing::Actor::Async",
         threaded: "Plumbing::Actor::Threaded",
-        rails: "Plumbing::Actor::Rails"
+        threaded_rails: "Plumbing::Actor::Rails"
       }.freeze
       private_constant :PROXY_BASE_CLASSES
 
@@ -59,5 +62,15 @@ module Plumbing
         end
       end
     end
+
+    private
+
+    def proxy= proxy
+      @proxy = proxy
+    end
+
+    def proxy = @proxy
+    alias_method :as_actor, :proxy
+    alias_method :async, :proxy
   end
 end

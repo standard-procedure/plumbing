@@ -12,7 +12,7 @@ By default it is `:inline`, so every command or query is handled synchronously. 
 
 `:threaded` mode handles tasks using a thread pool via [Concurrent Ruby](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent/Promises.html)).  Your code should include the "concurrent-ruby" gem in its bundle, as Plumbing does not load it by default.
 
-However, `:threaded` mode is not safe for Ruby on Rails applications.  In this case, use `:rails` mode, which is identical to `:threaded`, except it wraps the tasks in the Rails executor.  This ensures your actors do not interfere with the Rails framework.  Note that the Concurrent Ruby's default `:io` scheduler will create extra threads at times of high demand, which may put pressure on the ActiveRecord database connection pool.  A future version of plumbing will allow the thread pool to be adjusted with a maximum number of threads, preventing contention with the connection pool.
+However, `:threaded` mode is not safe for Ruby on Rails applications.  In this case, use `:threaded_rails` mode, which is identical to `:threaded`, except it wraps the tasks in the Rails executor.  This ensures your actors do not interfere with the Rails framework.  Note that the Concurrent Ruby's default `:io` scheduler will create extra threads at times of high demand, which may put pressure on the ActiveRecord database connection pool.  A future version of plumbing will allow the thread pool to be adjusted with a maximum number of threads, preventing contention with the connection pool.
 
 The `timeout` setting is used when performing queries - it defaults to 30s.
 
@@ -165,7 +165,7 @@ Actors are different.  Conceptually, each actor has it's own thread of execution
 
 This means each actor is only ever accessed by a single thread and the vast majority of concurrency issues are eliminated.
 
-[Plumbing::Actor](/lib/plumbing/actor.rb) allows you to define the `async` public interface to your objects.  Calling `.start` builds a proxy to the actual instance of your object and ensures that any messages sent are handled in a manner appropriate to the current mode - immediately for inline mode, using fibers for async mode and using threads for threaded and rails mode.
+[Plumbing::Actor](/lib/plumbing/actor.rb) allows you to define the `async` public interface to your objects.  Calling `.start` builds a proxy to the actual instance of your object and ensures that any messages sent are handled in a manner appropriate to the current mode - immediately for inline mode, using fibers for async mode and using threads for threaded and threaded_rails mode.
 
 When sending messages to an actor, this just works.
 
@@ -186,7 +186,7 @@ Using async mode is probably the easiest way to add concurrency to your applicat
 
 ### Threaded actprs
 
-Using threaded (or rails) mode gives you concurrency and parallelism.  If all your public objects are actors and you are careful about callbacks then the actor model will keep your code safe.  But there are a couple of extra things to consider.
+Using threaded (or threaded_rails) mode gives you concurrency and parallelism.  If all your public objects are actors and you are careful about callbacks then the actor model will keep your code safe.  But there are a couple of extra things to consider.
 
 Firstly, when you pass parameters or return results between threads, those objects are "transported" across the boundaries.
 Most objects are `clone`d. Hashes, keyword arguments and arrays have their contents recursively transported.  And any object that uses `GlobalID::Identification` (for example, ActiveRecord models) are marshalled into a GlobalID, then unmarshalled back in to their original object.  This is to prevent the same object from being amended in both the caller and receiver's threads.
@@ -195,6 +195,8 @@ Secondly, when you pass a block (or Proc parameter) to another actor, the block/
 (Note: we break that rule in the specs for the Pipe object - we use a block observer that sets the value on a local variable.  That's because it is a controlled situation where we know there are only two threads involved and we are explicitly waiting for the second thread to complete.  For almost every app that uses actors, there will be multiple threads and it will be impossible to predict the access patterns).
 
 Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the actor are available in this proxy - so you don't have to worry about callers bypassing the actor's internal context.
+
+If you're within a method inside your actor and you want to pass a reference to yourself, instead of using `self`, you should use `proxy` (which is also aliased as `as_actor` or `async`).
 
 Even when using actors, there is one condition where concurrency may cause issues.  If object A makes a query to object B which in turn makes a query back to object A, you will hit a deadlock.  This is because A is waiting on the response from B but B is now querying, and waiting for, A.  This does not apply to commands because they do not wait for a response.  However, when writing queries, be careful who you interact with - the configuration allows you to set a timeout (defaulting to 30s) in case this happens.
 
