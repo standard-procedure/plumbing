@@ -1,3 +1,11 @@
+## [0.4.1] - 2024-09-16
+
+ - Added `safely` to allow actors to run code within their own context
+
+## [0.4.0] - 2024-09-15
+
+ - Added #as_actor to allow actors to pass references to themselves
+
 ## [0.3.3] - 2024-09-14
 
  - Added :threaded and :rails modes
