@@ -469,6 +469,8 @@ You can also use the same `@object.as type` to type-check instances against modu
 
 ## Installation
 
+Note: this gem is licensed under the [LGPL](/LICENCE).  This may or may not make it unsuitable for use by you or your company.
+
 Install the gem and add to the application's Gemfile by executing:
 
 ```sh
