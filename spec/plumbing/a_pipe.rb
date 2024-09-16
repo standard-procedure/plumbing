@@ -98,11 +98,13 @@ RSpec.shared_examples "a pipe" do
 
   it "shuts down the pipe" do
     @pipe = described_class.start
+    @results = []
     @observer = ->(event) { @results << event }
     @pipe.add_observer @observer
 
     @pipe.shutdown
-
-    expect(await { @pipe.is_observer?(@observer) }).to eq false
+    @pipe.notify "ignore_me"
+    sleep 0.2
+    expect(@results).to be_empty
   end
 end

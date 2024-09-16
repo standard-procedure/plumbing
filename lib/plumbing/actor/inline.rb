@@ -13,8 +13,19 @@ module Plumbing
         Result.new(ex)
       end
 
-      Result = Data.define(:value) do
-        def await = value.is_a?(Exception) ? raise(value) : value
+      def safely(&)
+        send_message(:perform_safely, &)
+        nil
+      end
+
+      def within_actor? = true
+
+      def stop
+        # do nothing
+      end
+
+      Result = Data.define(:result) do
+        def value = result.is_a?(Exception) ? raise(result) : result
       end
       private_constant :Result
     end

@@ -3,6 +3,15 @@ require_relative "actor/inline"
 
 module Plumbing
   module Actor
+    def safely(&)
+      proxy.safely(&)
+      nil
+    end
+
+    def within_actor? = proxy.within_actor?
+
+    def stop = proxy.stop
+
     def self.included base
       base.extend ClassMethods
     end
@@ -72,5 +81,13 @@ module Plumbing
     def proxy = @proxy
     alias_method :as_actor, :proxy
     alias_method :async, :proxy
+
+    def perform_safely(&)
+      instance_eval(&)
+      nil
+    rescue => ex
+      puts ex
+      nil
+    end
   end
 end

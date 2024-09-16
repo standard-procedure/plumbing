@@ -21,8 +21,19 @@ module Plumbing
         Result.new(task)
       end
 
+      def safely(&)
+        send_message(:perform_safely, &)
+        nil
+      end
+
+      def within_actor? = true
+
+      def stop
+        # do nothing
+      end
+
       Result = Data.define(:task) do
-        def await
+        def value
           Timeout.timeout(Plumbing::Actor.timeout) do
             task.wait
           end

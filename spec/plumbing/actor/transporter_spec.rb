@@ -15,6 +15,7 @@ RSpec.describe Plumbing::Actor::Transporter do
     end
   end
   # standard:enable Lint/ConstantDefinitionInBlock
+
   before do
     GlobalID.app = "rspec"
     GlobalID::Locator.use :rspec do |gid, options|

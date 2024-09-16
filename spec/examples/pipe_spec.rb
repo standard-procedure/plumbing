@@ -1,5 +1,7 @@
 require "spec_helper"
 require "async"
+require "plumbing/actor/async"
+require "plumbing/actor/threaded"
 
 RSpec.describe "Pipe examples" do
   it "observes events" do
@@ -42,17 +44,19 @@ RSpec.describe "Pipe examples" do
       end
 
       def received event
-        @events << event
-        if @events.count >= 3
-          @events.clear
-          self << event
+        safely do
+          @events << event
+          if @events.count >= 3
+            @events.clear
+            self << event
+          end
         end
       end
     end
     # standard:enable Lint/ConstantDefinitionInBlock
 
     @source = Plumbing::Pipe.start
-    @filter = EveryThirdEvent.new(source: @source)
+    @filter = EveryThirdEvent.start(source: @source)
 
     @result = []
     @filter.add_observer do |event|
@@ -83,7 +87,7 @@ RSpec.describe "Pipe examples" do
     expect(@result).to eq ["one", "two"]
   end
 
-  it "dispatches events asynchronously using fibers" do
+  it "dispatches events asynchronously using async" do
     Plumbing.configure mode: :async do
       Sync do
         @first_source = Plumbing::Pipe.start
@@ -104,6 +108,38 @@ RSpec.describe "Pipe examples" do
 
         expect(["one-one", "two-two"]).to become_equal_to { @result }
       end
+    end
+  end
+
+  it "dispatches events asynchronously using threads" do
+    Plumbing.configure mode: :threaded do
+      @result = []
+
+      @first_source = Plumbing::Pipe.start
+      @second_source = Plumbing::Pipe.start
+      @junction = Plumbing::Junction.start @first_source, @second_source
+
+      @filter = Plumbing::Filter.start source: @junction do |event|
+        %w[one-one two-two].include? event.type
+      end
+      await do
+        @filter.add_observer do |event|
+          puts "observing #{event.type}"
+          @result << event.type
+        end
+      end
+
+      @first_source.notify "one-one"
+      @first_source.notify "one-two"
+      @second_source.notify "two-one"
+      @second_source.notify "two-two"
+
+      expect(["one-one", "two-two"]).to become_equal_to { @result.sort }
+    ensure
+      @first_source.shutdown
+      @second_source.shutdown
+      @junction.shutdown
+      @filter.shutdown
     end
   end
 end

@@ -61,6 +61,56 @@ RSpec.describe Plumbing::Actor do
     def me_as_actor = as_actor
 
     def me_as_self = self
+
+    def prepare = @calling_thread = Thread.current
+
+    def check = @calling_thread == Thread.current
+  end
+
+  class Actor
+    include Plumbing::Actor
+    async :get_object_id, :get_object
+
+    private def get_object_id(record) = record.object_id
+    private def get_object(record) = record
+  end
+
+  class SafetyCheck
+    include Plumbing::Actor
+    async :called_from_actor_thread?
+
+    def initialize tester
+      @tester = tester
+      @called_from_actor_thread = false
+      configure_safety_check
+    end
+
+    private
+
+    def called_from_actor_thread? = @called_from_actor_thread
+
+    def configure_safety_check
+      @tester.on_safety_check do
+        safely do
+          @called_from_actor_thread = proxy.within_actor?
+        end
+      end
+    end
+  end
+
+  class Tester
+    include Plumbing::Actor
+    async :on_safety_check, :do_safety_check
+
+    def initialize
+      @on_safety_check = nil
+    end
+
+    private
+
+    def on_safety_check(&block) = @on_safety_check = block
+
+    def do_safety_check = @on_safety_check&.call
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
@@ -76,15 +126,15 @@ RSpec.describe Plumbing::Actor do
     expect(@counter.class).to eq @proxy_class
   end
 
-  it "includes commands and queries from the superclass" do
+  it "includes async messages from the superclass" do
     expect(StepCounter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error, :step_value]
 
     @step_counter = StepCounter.start "step counter", initial_value: 100, step_value: 10
 
-    expect(@step_counter.count.await).to eq 100
-    expect(@step_counter.step_value.await).to eq 10
+    expect(@step_counter.count.value).to eq 100
+    expect(@step_counter.step_value.value).to eq 10
     @step_counter.slowly_increment
-    expect(@step_counter.count.await).to eq 110
+    expect(@step_counter.count.value).to eq 110
   end
 
   it "can access its own proxy" do
@@ -103,11 +153,11 @@ RSpec.describe Plumbing::Actor do
       @counter = Counter.start "inline counter", initial_value: 100
       @time = Time.now
 
-      expect(@counter.name.await).to eq "inline counter"
-      expect(@counter.count.await).to eq 100
+      expect(@counter.name.value).to eq "inline counter"
+      expect(@counter.count.value).to eq 100
       expect(Time.now - @time).to be < 0.1
 
-      expect(@counter.slow_query.await).to eq 100
+      expect(@counter.slow_query.value).to eq 100
       expect(Time.now - @time).to be > 0.1
     end
 
@@ -117,8 +167,17 @@ RSpec.describe Plumbing::Actor do
 
       @counter.slowly_increment
 
-      expect(@counter.count.await).to eq 101
+      expect(@counter.count.value).to eq 101
       expect(Time.now - @time).to be > 0.1
+    end
+
+    it "can safely access its own data" do
+      @tester = Tester.start
+      @safety_check = SafetyCheck.start @tester
+
+      @tester.do_safety_check
+
+      expect(true).to become_equal_to { @safety_check.called_from_actor_thread?.value }
     end
   end
 
@@ -134,12 +193,14 @@ RSpec.describe Plumbing::Actor do
         @counter = Counter.start "async counter", initial_value: 100
         @time = Time.now
 
-        expect(@counter.name.await).to eq "async counter"
-        expect(@counter.count.await).to eq 100
+        expect(@counter.name.value).to eq "async counter"
+        expect(@counter.count.value).to eq 100
         expect(Time.now - @time).to be < 0.1
 
-        expect(@counter.slow_query.await).to eq 100
+        expect(@counter.slow_query.value).to eq 100
         expect(Time.now - @time).to be > 0.1
+      ensure
+        @counter.stop
       end
 
       it "performs queries ignoring the response and returning immediately" do
@@ -149,6 +210,8 @@ RSpec.describe Plumbing::Actor do
         @counter.slow_query
 
         expect(Time.now - @time).to be < 0.1
+      ensure
+        @counter.stop
       end
 
       it "performs commands in the background and returning immediately" do
@@ -159,20 +222,26 @@ RSpec.describe Plumbing::Actor do
         expect(Time.now - @time).to be < 0.1
 
         # wait for the background task to complete
-        expect(101).to become_equal_to { @counter.count.await }
+        expect(101).to become_equal_to { @counter.count.value }
         expect(Time.now - @time).to be > 0.1
+      ensure
+        @counter.stop
       end
 
       it "re-raises exceptions when checking the result" do
         @counter = Counter.start "failure"
 
-        expect { @counter.raises_error.await }.to raise_error "I'm an error"
+        expect { @counter.raises_error.value }.to raise_error "I'm an error"
+      ensure
+        @counter.stop
       end
 
       it "does not raise exceptions if ignoring the result" do
         @counter = Counter.start "failure"
 
         expect { @counter.raises_error }.not_to raise_error
+      ensure
+        @counter.stop
       end
     end
   end
@@ -180,6 +249,13 @@ RSpec.describe Plumbing::Actor do
   context "threaded" do
     around :example do |example|
       Plumbing.configure mode: :threaded, &example
+    end
+
+    before do
+      GlobalID.app = "rspec"
+      GlobalID::Locator.use :rspec do |gid, options|
+        Record.new gid.model_id
+      end
     end
 
     # standard:disable Lint/ConstantDefinitionInBlock
@@ -194,33 +270,41 @@ RSpec.describe Plumbing::Actor do
         other.id == @id
       end
     end
-
-    class Actor
-      include Plumbing::Actor
-      async :get_object_id, :get_object
-
-      private def get_object_id(record) = record.object_id
-      private def get_object(record) = record
-    end
     # standard:enable Lint/ConstantDefinitionInBlock
 
     it "packs and unpacks arguments when sending them across threads" do
       @actor = Actor.start
       @record = Record.new "999"
 
-      @object_id = @actor.get_object_id(@record).await
+      @object_id = @actor.get_object_id(@record).value
 
       expect(@object_id).to_not eq @record.object_id
+    ensure
+      @actor.stop
     end
 
     it "packs and unpacks results when sending them across threads" do
       @actor = Actor.start
       @record = Record.new "999"
 
-      @object = @actor.get_object(@record).await
+      @object = @actor.get_object(@record).value
 
       expect(@object.id).to eq @record.id
       expect(@object.object_id).to_not eq @record.object_id
+    ensure
+      @actor.stop
+    end
+
+    it "can safely access its own data" do
+      @tester = Tester.start
+      @safety_check = SafetyCheck.start @tester
+
+      @tester.do_safety_check
+
+      expect(true).to become_equal_to { @safety_check.called_from_actor_thread?.value }
+    ensure
+      @tester.stop
+      @safety_check.stop
     end
   end
 end

@@ -15,7 +15,7 @@ RSpec.describe Plumbing::CustomFilter do
     # standard:enable Lint/ConstantDefinitionInBlock
 
     @pipe = Plumbing::Pipe.start
-    @filter = ReversingFilter.new(source: @pipe)
+    @filter = ReversingFilter.start(source: @pipe)
     @result = []
     @filter.add_observer do |event|
       @result << event.type

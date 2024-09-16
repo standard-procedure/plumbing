@@ -49,6 +49,7 @@ module Plumbing
     # Subclasses should override this to perform their own shutdown routines and call `super` to ensure everything is tidied up
     def shutdown
       observers.clear
+      stop
     end
 
     protected

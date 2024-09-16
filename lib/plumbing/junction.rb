@@ -5,16 +5,17 @@ module Plumbing
     # @param sources [Array<Plumbing::Observable>] the sources which will be joined and relayed
     def initialize *sources
       super()
-      @sources = sources.collect { |source| add(source) }
+      sources.each { |source| add(source) }
     end
 
     private
 
     def add source
       source.as(Observable).add_observer do |event|
-        dispatch event
+        safely do
+          dispatch event
+        end
       end
-      source
     end
   end
 end

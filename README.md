@@ -169,16 +169,32 @@ This means each actor is only ever accessed by a single thread and the vast majo
 
 When sending messages to an actor, this just works.
 
-However, as the caller, you do not have direct access to the return values of the messages that you send.  Instead, you must call `#await` - or alternatively, wrap your call in `await { ... }`.  `await` is added in to ruby's `Kernel` so it is available everywhere.  This then makes the caller's thread block until the receiver's thread has finished its work and returned a value.  Or if the receiver raises an exception, that exception is then re-raised in the calling thread.
+However, as the caller, you do not have direct access to the return values of the messages that you send.  Instead, you must call `#value` - or alternatively, wrap your call in `await { ... }`.  The block form of `await` is added in to ruby's `Kernel` so it is available everywhere.  It is also safe to use with non-actors (in which case it just returns the original value from the block).
 
-The actor model does not eliminate every possible concurrency issue.  If you use `await`, it is possible to deadlock yourself.
+```ruby
+@actor = MyActor.start name: "Alice"
+
+@actor.name.value
+# => "Alice"
+
+await { @actor.name }
+# => "Alice"
+
+await { "Bob" }
+# => "Bob"
+```
+
+This then makes the caller's thread block until the receiver's thread has finished its work and returned a value.  Or if the receiver raises an exception, that exception is then re-raised in the calling thread.
+
+The actor model does not eliminate every possible concurrency issue.  If you use `value` or `await`, it is possible to deadlock yourself.
+
 Actor A, running in Thread 1, sends a message to Actor B and then awaits the result, meaning Thread 1 is blocked.  Actor B, running in Thread 2, starts to work, but needs to ask Actor A a question.  So it sends a message to Actor A and awaits the result.  Thread 2 is now blocked, waiting for Actor A to respond.  But Actor A, running in Thread 1, is blocked, waiting for Actor B to respond.
 
-This potential deadlock only occurs if you use `await` and have actors that call back in to each other.  If your objects are strictly layered, or you never use `await` (perhaps, instead using a Pipe to observe events), then this particular deadlock should not occur.  However, just in case, every call to `await` has a timeout defaulting to 30s.
+This potential deadlock only occurs if you use `value` or `await` and have actors that call back in to each other.  If your objects are strictly layered, or you never use `value` or `await` (perhaps, instead using a Pipe to observe events), then this particular deadlock should not occur.  However, just in case, every call to `value` has a timeout defaulting to 30s.
 
 ### Inline actors
 
-Even though inline mode is not asynchronous, you must still use `await` to access the results from another actor.  However, as deadlocks are impossible in a single thread, there is no timeout.
+Even though inline mode is not asynchronous, you must still use `value` or `await` to access the results from another actor.  However, as deadlocks are impossible in a single thread, there is no timeout.
 
 ### Async actors
 
@@ -189,18 +205,42 @@ Using async mode is probably the easiest way to add concurrency to your applicat
 Using threaded (or threaded_rails) mode gives you concurrency and parallelism.  If all your public objects are actors and you are careful about callbacks then the actor model will keep your code safe.  But there are a couple of extra things to consider.
 
 Firstly, when you pass parameters or return results between threads, those objects are "transported" across the boundaries.
-Most objects are `clone`d. Hashes, keyword arguments and arrays have their contents recursively transported.  And any object that uses `GlobalID::Identification` (for example, ActiveRecord models) are marshalled into a GlobalID, then unmarshalled back in to their original object.  This is to prevent the same object from being amended in both the caller and receiver's threads.
-Secondly, when you pass a block (or Proc parameter) to another actor, the block/proc will be executed in the receiver's thread.  This means you must not access any variables that would normally be in scope for your block (whether local variables or instance variables of other objects - see note below)  This is because you will be accessing them from a different thread to where they were defined, leading to potential race conditions.  And, if you access any actors, you must not use `await` or you risk a deadlock.  If you do pass a block or proc parameter, you should limit your actions to sending a message to other actors without awaiting the results.
+Most objects are cloned. Hashes, keyword arguments and arrays have their contents recursively transported.  And any object that uses `GlobalID::Identification` (for example, ActiveRecord models) are marshalled into a GlobalID, then unmarshalled back in to their original object.  This is to prevent the same object from being amended in both the caller and receiver's threads.
 
-(Note: we break that rule in the specs for the Pipe object - we use a block observer that sets the value on a local variable.  That's because it is a controlled situation where we know there are only two threads involved and we are explicitly waiting for the second thread to complete.  For almost every app that uses actors, there will be multiple threads and it will be impossible to predict the access patterns).
+Secondly, when you pass a block (or Proc parameter) to another actor, the block/proc will be executed in the receiver's thread.  This means you must not access any variables that would normally be in scope for your block (whether local variables or instance variables of other objects - see note below)  This is because you will be accessing them from a different thread to where they were defined, leading to potential race conditions.  And, if you access any actors, you must not use `value` or `await` or you risk a deadlock.  If you are within an actor and need to pass a block or proc parameter, you should use the `safely` method to ensure that your block is run within the context of the calling actor, not the receiving actor.
+
+For example, when defining a custom filter,  the filter adds itself as an observer to its source.  The source triggers the `received` method on the filter, which will run in the context of the source.  So the custom filter uses `safely` to move back into its own context and access its instance variables.
+
+```ruby
+class EveryThirdEvent < Plumbing::CustomFilter
+  def initialize source:
+    super
+    @events = []
+  end
+
+  def received event
+    safely do
+      @events << event
+      if @events.count >= 3
+        @events.clear
+        self << event
+      end
+    end
+  end
+end
+```
+
+(Note: we break that rule in the specs for Pipe objects - we use a block observer that sets the value on a local variable.  That's because it is a controlled situation where we know there are only two threads involved and we are explicitly waiting for the second thread to complete.  For almost every app that uses actors, there will be multiple threads and it will be impossible to predict the access patterns).
+
+### Constructing actors
 
 Instead of constructing your object with `.new`, use `.start`.  This builds a proxy object that wraps the target instance and dispatches messages through a safe mechanism.  Only messages that have been defined as part of the actor are available in this proxy - so you don't have to worry about callers bypassing the actor's internal context.
 
+### Referencing actors
+
 If you're within a method inside your actor and you want to pass a reference to yourself, instead of using `self`, you should use `proxy` (which is also aliased as `as_actor` or `async`).
 
-Even when using actors, there is one condition where concurrency may cause issues.  If object A makes a query to object B which in turn makes a query back to object A, you will hit a deadlock.  This is because A is waiting on the response from B but B is now querying, and waiting for, A.  This does not apply to commands because they do not wait for a response.  However, when writing queries, be careful who you interact with - the configuration allows you to set a timeout (defaulting to 30s) in case this happens.
-
-Also be aware that if you use actors in one place, you need to use them everywhere - especially if you're using threads or ractors (coming soon).  This is because as the actor sends messages to its collaborators, those calls will be made from within the actor's internal context.  If the collaborators are also actors, the subsequent messages will be handled correctly, if not, data consistency bugs could occur.
+Also be aware that if you use actors in one place, you need to use them everywhere - especially if you're using threads.  This is because as the actor sends messages to its collaborators, those calls will be made from within the actor's internal context.  If the collaborators are also actors, the subsequent messages will be handled correctly, if not, data consistency bugs could occur.  This does not mean that every class needs to be an actor, just your "public API" classes which may be accessed from multiple actors or other threads.
 
 ### Usage
 
@@ -210,16 +250,16 @@ Also be aware that if you use actors in one place, you need to use them everywhe
   require "plumbing"
 
   class Employee
-    attr_reader :name, :job_title
-
     include Plumbing::Actor
-    query :name, :job_title, :greet_slowly
-    command :promote
+    async :name, :job_title, :greet_slowly, :promote
+    attr_reader :name, :job_title
 
     def initialize(name)
       @name = name
       @job_title = "Sales assistant"
     end
+
+    private
 
     def promote
       sleep 0.5
@@ -239,16 +279,16 @@ Also be aware that if you use actors in one place, you need to use them everywhe
   await { @person.job_title }
   # => "Sales assistant"
 
-  # `greet_slowly` is a query so will block until a response is received
+  # by using `await`, we will block until `greet_slowly` has returned a value
   await { @person.greet_slowly }
   # =>  "H E L L O"
 
-  # we're not awaiting the result, so this will run in the background (unless we're using inline mode)
+  # this time, we're not awaiting the result, so this will run in the background (unless we're using inline mode)
   @person.greet_slowly
 
-  # This will run in the background
+  # this will run in the background
   @person.promote
-  # this will block, as we wait for the result from #job_title and #job_title will not run until after #promote has completed
+  # this will block - it will not return until the previous calls, #greet_slowly, #promote, and this call to #job_title have completed
   await { @person.job_title }
   # => "Sales manager"
 ```
@@ -304,12 +344,17 @@ Pipes are implemented as actors, meaning that event notifications can be dispatc
     end
 
     def received event
-      # store this event into our buffer
-      @events << event
-      # if this is the third event we've received then clear the buffer and broadcast the latest event
-      if @events.count >= 3
-        @events.clear
-        self << event
+      # #received is called in the context of the `source` actor
+      # in order to safely access the `EveryThirdEvent` instance variables
+      # we need to move into the context of our own actor
+      safely do
+        # store this event into our buffer
+        @events << event
+        # if this is the third event we've received then clear the buffer and broadcast the latest event
+        if @events.count >= 3
+          @events.clear
+          self << event
+        end
       end
     end
   end
@@ -346,31 +391,6 @@ Pipes are implemented as actors, meaning that event notifications can be dispatc
   @second_source.notify "two"
   # => "two"
 ```
-
-[Dispatching events asynchronously (using Fibers)](/spec/examples/pipe_spec.rb):
-```ruby
-  require "plumbing"
-  require "async"
-
-  Plumbing.configure mode: :async
-
-  Sync do
-    @first_source = Plumbing::Pipe.start
-    @second_source = Plumbing::Pipe.start
-
-    @junction = Plumbing::Junction.start @first_source, @second_source
-
-    @filter = Plumbing::Filter.start source: @junction do |event|
-      %w[one-one two-two].include? event.type
-    end
-
-    @first_source.notify "one-one"
-    @first_source.notify "one-two"
-    @second_source.notify "two-one"
-    @second_source.notify "two-two"
-  end
-```
-
 ## Plumbing::RubberDuck - duck types and type-casts
 
 Define an [interface or protocol](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming)) specifying which messages you expect to be able to send.

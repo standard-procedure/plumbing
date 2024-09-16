@@ -1,34 +1,8 @@
 require "spec_helper"
+require "plumbing/actor/async"
+require "plumbing/actor/threaded"
 
 RSpec.shared_examples "an example actor" do |runs_in_background|
-  it "queries an object" do
-    @person = Employee.start "Alice"
-
-    expect(await { @person.name }).to eq "Alice"
-    expect(await { @person.job_title }).to eq "Sales assistant"
-
-    @time = Time.now
-    # `greet_slowly` is a query so will block until a response is received
-    expect(await { @person.greet_slowly }).to eq "H E L L O"
-    expect(Time.now - @time).to be > 0.1
-
-    @time = Time.now
-    # we're not awaiting the result, so this should run in the background (unless we're using inline mode)
-    @person.greet_slowly
-
-    expect(Time.now - @time).to be < 0.1 if runs_in_background
-    expect(Time.now - @time).to be > 0.1 if !runs_in_background
-  end
-
-  it "commands an object" do
-    @person = Employee.start "Alice"
-    @person.promote
-    @job_title = await { @person.job_title }
-    expect(@job_title).to eq "Sales manager"
-  end
-end
-
-RSpec.describe "Actor example: " do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Employee
     include Plumbing::Actor
@@ -53,6 +27,37 @@ RSpec.describe "Actor example: " do
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
+  it "queries an object" do
+    @person = Employee.start "Alice"
+
+    expect(await { @person.name }).to eq "Alice"
+    expect(await { @person.job_title }).to eq "Sales assistant"
+
+    @time = Time.now
+    # `greet_slowly` is a query so will block until a response is received
+    expect(await { @person.greet_slowly }).to eq "H E L L O"
+    expect(Time.now - @time).to be > 0.1
+
+    @time = Time.now
+    # we're not awaiting the result, so this should run in the background (unless we're using inline mode)
+    @person.greet_slowly
+
+    expect(Time.now - @time).to be < 0.1 if runs_in_background
+    expect(Time.now - @time).to be > 0.1 if !runs_in_background
+  ensure
+    @person.stop
+  end
+
+  it "commands an object" do
+    @person = Employee.start "Alice"
+    @person.promote
+    expect(@person.job_title.value).to eq "Sales manager"
+  ensure
+    @person.stop
+  end
+end
+
+RSpec.describe "Actor example: " do
   context "inline mode" do
     around :example do |example|
       Plumbing.configure mode: :inline, &example
