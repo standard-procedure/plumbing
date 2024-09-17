@@ -6,8 +6,8 @@ module Plumbing
       end
 
       # Send the message to the target and wrap the result
-      def send_message(message_name, *, &)
-        value = @target.send(message_name, *, &)
+      def send_message(message_name, *, **, &)
+        value = @target.send(message_name, *, **, &)
         Result.new(value)
       rescue => ex
         Result.new(ex)

@@ -14,9 +14,9 @@ module Plumbing
       end
 
       # Send the message to the target and wrap the result
-      def send_message message_name, *args, &block
+      def send_message(message_name, *, **, &)
         task = @semaphore.async do
-          @target.send message_name, *args, &block
+          @target.send(message_name, *, **, &)
         end
         Result.new(task)
       end

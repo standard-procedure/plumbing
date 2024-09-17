@@ -115,11 +115,12 @@ RSpec.describe Plumbing::Actor do
 
   class ParameterHandler
     include Plumbing::Actor
-    async :set_values, :args, :block
-    attr_reader :args, :block
+    async :set_values, :args, :params, :block
+    attr_reader :args, :params, :block
 
     def initialize
       @args = nil
+      @params = nil
       @block = nil
     end
 
@@ -127,6 +128,7 @@ RSpec.describe Plumbing::Actor do
 
     def set_values *args, **params, &block
       @args = args
+      @params = params
       @block = block
     end
   end
@@ -181,14 +183,15 @@ RSpec.describe Plumbing::Actor do
         @parameter_handler = ParameterHandler.start
 
         @parameter_handler.set_values something: "for nothing", cat: "dog", number: 123
-        expect(await { @parameter_handler.args }).to eq([{something: "for nothing", cat: "dog", number: 123}])
+        expect(await { @parameter_handler.params }).to eq({something: "for nothing", cat: "dog", number: 123})
       end
 
       it "sends a mix of positional and keyword parameters" do
         @parameter_handler = ParameterHandler.start
 
         @parameter_handler.set_values "what do you say", 123, something: "for nothing"
-        expect(await { @parameter_handler.args }).to eq ["what do you say", 123, {something: "for nothing"}]
+        expect(await { @parameter_handler.args }).to eq ["what do you say", 123]
+        expect(await { @parameter_handler.params }).to eq({something: "for nothing"})
       end
 
       it "sends a block parameter" do
@@ -209,7 +212,8 @@ RSpec.describe Plumbing::Actor do
           "BOOM"
         end
 
-        expect(await { @parameter_handler.args }).to eq ["what do you say", 123, {something: "for nothing"}]
+        expect(await { @parameter_handler.args }).to eq ["what do you say", 123]
+        expect(await { @parameter_handler.params }).to eq({something: "for nothing"})
         @block = await { @parameter_handler.block }
         expect(@block.call).to eq "BOOM"
       end

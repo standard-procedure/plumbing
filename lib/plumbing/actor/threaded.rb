@@ -16,8 +16,8 @@ module Plumbing
       end
 
       # Send the message to the target and wrap the result
-      def send_message message_name, *args, &block
-        Message.new(@target, message_name, Plumbing::Actor.transporter.marshal(*args), block, Concurrent::MVar.new).tap do |message|
+      def send_message(message_name, *args, **params, &block)
+        Message.new(@target, message_name, Plumbing::Actor.transporter.marshal(*args, **params), block, Concurrent::MVar.new).tap do |message|
           @mutex.synchronize do
             @queue << message
             send_messages if @queue.any?

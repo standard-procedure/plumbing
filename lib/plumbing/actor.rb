@@ -64,8 +64,8 @@ module Plumbing
       def build_proxy_class
         Class.new(proxy_base_class).tap do |proxy_class|
           async_messages.each do |message|
-            proxy_class.define_method message do |*args, &block|
-              send_message(message, *args, &block)
+            proxy_class.define_method message do |*args, **params, &block|
+              send_message(message, *args, **params, &block)
             end
           end
         end
