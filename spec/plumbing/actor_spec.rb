@@ -112,39 +112,111 @@ RSpec.describe Plumbing::Actor do
 
     def do_safety_check = @on_safety_check&.call
   end
+
+  class ParameterHandler
+    include Plumbing::Actor
+    async :set_values, :args, :block
+    attr_reader :args, :block
+
+    def initialize
+      @args = nil
+      @block = nil
+    end
+
+    private
+
+    def set_values *args, **params, &block
+      @args = args
+      @block = block
+    end
+  end
   # standard:enable Lint/ConstantDefinitionInBlock
 
-  it "knows which async messages are understood" do
-    expect(Counter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error]
+  [:inline, :async, :threaded].each do |mode|
+    context "In #{mode} mode" do
+      it "knows which async messages are understood" do
+        expect(Counter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error]
+      end
+
+      it "reuses existing proxy classes" do
+        @counter = Counter.start "inline counter", initial_value: 100
+        @proxy_class = @counter.class
+
+        @counter = Counter.start "another inline counter", initial_value: 200
+        expect(@counter.class).to eq @proxy_class
+      end
+
+      it "includes async messages from the superclass" do
+        expect(StepCounter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error, :step_value]
+
+        @step_counter = StepCounter.start "step counter", initial_value: 100, step_value: 10
+
+        expect(@step_counter.count.value).to eq 100
+        expect(@step_counter.step_value.value).to eq 10
+        @step_counter.slowly_increment
+        expect(@step_counter.count.value).to eq 110
+      end
+
+      it "can access its own proxy" do
+        @actor = WhoAmI.start
+
+        expect(await { @actor.me_as_self }).to_not eq @actor
+        expect(await { @actor.me_as_actor }).to eq @actor
+      end
+      it "sends a single positional parameter" do
+        @parameter_handler = ParameterHandler.start
+
+        @parameter_handler.set_values "this"
+        expect(await { @parameter_handler.args }).to eq ["this"]
+      end
+
+      it "sends multiple positional parameters" do
+        @parameter_handler = ParameterHandler.start
+
+        @parameter_handler.set_values "this", "that"
+        expect(await { @parameter_handler.args }).to eq ["this", "that"]
+      end
+
+      it "sends keyword parameters" do
+        @parameter_handler = ParameterHandler.start
+
+        @parameter_handler.set_values something: "for nothing", cat: "dog", number: 123
+        expect(await { @parameter_handler.args }).to eq([{something: "for nothing", cat: "dog", number: 123}])
+      end
+
+      it "sends a mix of positional and keyword parameters" do
+        @parameter_handler = ParameterHandler.start
+
+        @parameter_handler.set_values "what do you say", 123, something: "for nothing"
+        expect(await { @parameter_handler.args }).to eq ["what do you say", 123, {something: "for nothing"}]
+      end
+
+      it "sends a block parameter" do
+        @parameter_handler = ParameterHandler.start
+
+        @parameter_handler.set_values do
+          "HELLO"
+        end
+
+        @block = await { @parameter_handler.block }
+        expect(@block.call).to eq "HELLO"
+      end
+
+      it "sends a mix of positional and keyword parameters with a block" do
+        @parameter_handler = ParameterHandler.start
+
+        @parameter_handler.set_values "what do you say", 123, something: "for nothing" do
+          "BOOM"
+        end
+
+        expect(await { @parameter_handler.args }).to eq ["what do you say", 123, {something: "for nothing"}]
+        @block = await { @parameter_handler.block }
+        expect(@block.call).to eq "BOOM"
+      end
+    end
   end
 
-  it "reuses existing proxy classes" do
-    @counter = Counter.start "inline counter", initial_value: 100
-    @proxy_class = @counter.class
-
-    @counter = Counter.start "another inline counter", initial_value: 200
-    expect(@counter.class).to eq @proxy_class
-  end
-
-  it "includes async messages from the superclass" do
-    expect(StepCounter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error, :step_value]
-
-    @step_counter = StepCounter.start "step counter", initial_value: 100, step_value: 10
-
-    expect(@step_counter.count.value).to eq 100
-    expect(@step_counter.step_value.value).to eq 10
-    @step_counter.slowly_increment
-    expect(@step_counter.count.value).to eq 110
-  end
-
-  it "can access its own proxy" do
-    @actor = WhoAmI.start
-
-    expect(await { @actor.me_as_self }).to_not eq @actor
-    expect(await { @actor.me_as_actor }).to eq @actor
-  end
-
-  context "inline" do
+  context "Inline mode only" do
     around :example do |example|
       Plumbing.configure mode: :inline, &example
     end
@@ -182,7 +254,7 @@ RSpec.describe Plumbing::Actor do
   end
 
   [:threaded, :async].each do |mode|
-    context mode.to_s do
+    context "Asynchronously (#{mode})" do
       around :example do |example|
         Sync do
           Plumbing.configure mode: mode, &example
@@ -246,7 +318,7 @@ RSpec.describe Plumbing::Actor do
     end
   end
 
-  context "threaded" do
+  context "Threaded mode only" do
     around :example do |example|
       Plumbing.configure mode: :threaded, &example
     end

@@ -20,9 +20,7 @@ module Plumbing
 
       def within_actor? = true
 
-      def stop
-        # do nothing
-      end
+      def stop = nil
 
       Result = Data.define(:result) do
         def value = result.is_a?(Exception) ? raise(result) : result

@@ -28,9 +28,7 @@ module Plumbing
 
       def within_actor? = true
 
-      def stop
-        # do nothing
-      end
+      def stop = nil
 
       Result = Data.define(:task) do
         def value
