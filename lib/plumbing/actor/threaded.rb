@@ -18,10 +18,8 @@ module Plumbing
       # Send the message to the target and wrap the result
       def send_message(message_name, *args, **params, &block)
         Message.new(@target, message_name, Plumbing::Actor.transporter.marshal(*args, **params), block, Concurrent::MVar.new).tap do |message|
-          @mutex.synchronize do
-            @queue << message
-            send_messages if @queue.any?
-          end
+          @queue << message
+          send_messages
         end
       end
 
@@ -38,15 +36,18 @@ module Plumbing
 
       protected
 
-      def future(&) = Concurrent::Promises.future(&)
+      def in_context(&)
+        Concurrent::Promises.future do
+          @mutex.synchronize(&)
+        end
+      end
 
       private
 
       def send_messages
-        future do
-          @mutex.synchronize do
-            message = @queue.shift
-            message&.call
+        in_context do
+          while (message = @queue.shift)
+            message.call
           end
         end
       end

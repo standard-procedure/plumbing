@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    standard-procedure-plumbing (0.4.2)
+    standard-procedure-plumbing (0.4.3)
       globalid
 
 GEM

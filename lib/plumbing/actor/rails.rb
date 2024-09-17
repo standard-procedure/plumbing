@@ -5,8 +5,8 @@ module Plumbing
     class Rails < Threaded
       protected
 
-      def future(&)
-        Concurrent::Promises.future do
+      def in_context(&)
+        super do
           Rails.application.executor.wrap(&)
         end
       end
