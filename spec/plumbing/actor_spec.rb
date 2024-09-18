@@ -134,8 +134,8 @@ RSpec.describe Plumbing::Actor do
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
-  [:inline, :async, :threaded].each do |mode|
-    context "In #{mode} mode" do
+  Plumbing::Spec.modes do
+    context "In #{Plumbing.config.mode} mode" do
       it "knows which async messages are understood" do
         expect(Counter.async_messages).to eq [:name, :count, :slow_query, :slowly_increment, :raises_error]
       end

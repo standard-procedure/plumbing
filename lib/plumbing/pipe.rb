@@ -64,7 +64,7 @@ module Plumbing
         Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event.type} to #{observer}" }
         observer.call event
       rescue => ex
-        puts ex
+        Plumbing.config.logger.error { "!!!! #{self.class}#dispatch #{event.type} => #{ex}" }
         ex
       end
     end

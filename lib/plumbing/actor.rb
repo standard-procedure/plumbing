@@ -86,7 +86,7 @@ module Plumbing
       instance_eval(&)
       nil
     rescue => ex
-      puts ex
+      Plumbing.config.logger.error { "!!!! #{self.class}#perform_safely => #{ex}" }
       nil
     end
   end

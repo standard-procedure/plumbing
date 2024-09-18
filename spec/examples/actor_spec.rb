@@ -57,30 +57,8 @@ RSpec.shared_examples "an example actor" do |runs_in_background|
   end
 end
 
-RSpec.describe "Actor example: " do
-  context "inline mode" do
-    around :example do |example|
-      Plumbing.configure mode: :inline, &example
-    end
-
+Plumbing::Spec.modes do
+  RSpec.describe "In #{Plumbing.config.mode} mode" do
     it_behaves_like "an example actor", false
-  end
-
-  context "async mode" do
-    around :example do |example|
-      Plumbing.configure mode: :async do
-        Kernel::Async(&example)
-      end
-    end
-
-    it_behaves_like "an example actor", true
-  end
-
-  context "threaded mode" do
-    around :example do |example|
-      Plumbing.configure mode: :threaded, &example
-    end
-
-    it_behaves_like "an example actor", true
   end
 end

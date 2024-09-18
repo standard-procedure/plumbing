@@ -14,14 +14,8 @@ RSpec.describe "await" do
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
-  [:inline, :async, :threaded].each do |mode|
-    context "#{mode} mode" do
-      around :example do |example|
-        Sync do
-          Plumbing.configure mode: mode, &example
-        end
-      end
-
+  Plumbing::Spec.modes do
+    context "In #{Plumbing.config.mode} mode" do
       it "awaits a result from the actor directly" do
         @person = Person.start "Alice"
 

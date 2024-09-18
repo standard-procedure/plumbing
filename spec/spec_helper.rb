@@ -2,6 +2,7 @@
 
 require "plumbing"
 require_relative "../lib/plumbing/spec/become_matchers"
+require_relative "../lib/plumbing/spec/modes"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
