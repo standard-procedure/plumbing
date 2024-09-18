@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "plumbing"
-require_relative "become_equal_to_matcher"
+require_relative "../lib/plumbing/spec/become_equal_to_matcher"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

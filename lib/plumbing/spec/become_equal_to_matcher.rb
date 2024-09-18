@@ -9,15 +9,12 @@ require "rspec/expectations"
 #
 RSpec::Matchers.define :become_equal_to do
   match do |expected|
-    max = Plumbing.config.timeout * 10
-    counter = 0
-    matched = false
-    while (counter < max) && (matched == false)
-      sleep 0.1
-      counter += 1
-      matched = true if (@result = block_arg.call) == expected
+    wait_for do
+      block_arg.call == expected
     end
-    matched
+    true
+  rescue Timeout::Error
+    false
   end
 
   failure_message do |expected|
