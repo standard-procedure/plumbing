@@ -1,16 +1,7 @@
+require "logger"
+
 # Pipes, pipelines, actors and rubber ducks
 module Plumbing
-  Config = Data.define :mode, :actor_proxy_classes, :timeout, :debug do
-    def actor_proxy_class_for target_class
-      actor_proxy_classes[target_class]
-    end
-
-    def register_actor_proxy_class_for target_class, proxy_class
-      actor_proxy_classes[target_class] = proxy_class
-    end
-  end
-  private_constant :Config
-
   # Access the current configuration
   # @return [Config]
   def self.config
@@ -45,7 +36,23 @@ module Plumbing
   private_class_method :set_configuration_and_yield
 
   def self.configs
-    @configs ||= [Config.new(mode: :inline, timeout: 30, actor_proxy_classes: {}, debug: false)]
+    @configs ||= [Config.new(mode: :inline, timeout: 30, actor_proxy_classes: {}, max_concurrency: 12, logger: logger)]
   end
   private_class_method :configs
+
+  def self.logger
+    @logger = Logger.new($stdout, level: Logger::INFO)
+  end
+  private_class_method :logger
+
+  Config = Data.define :mode, :actor_proxy_classes, :timeout, :max_concurrency, :logger do
+    def actor_proxy_class_for target_class
+      actor_proxy_classes[target_class]
+    end
+
+    def register_actor_proxy_class_for target_class, proxy_class
+      actor_proxy_classes[target_class] = proxy_class
+    end
+  end
+  private_constant :Config
 end

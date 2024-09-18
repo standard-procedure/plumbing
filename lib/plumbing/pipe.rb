@@ -16,6 +16,7 @@ module Plumbing
     # @param event_type [String] representing the type of event this is
     # @param data [Hash] representing the event-specific data to be passed to the observers
     def notify event_type, data = nil
+      Plumbing.config.logger.debug { "-> #{@self.class}#notify #{event_type}" }
       Event.new(type: event_type, data: data).tap do |event|
         self << event
       end
@@ -60,6 +61,7 @@ module Plumbing
     # Discards any errors raised by the observer so that all observers will be successfully notified
     def dispatch event
       observers.each do |observer|
+        Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event.type} to #{observer}" }
         observer.call event
       rescue => ex
         puts ex

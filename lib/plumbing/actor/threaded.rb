@@ -8,8 +8,6 @@ require_relative "transporter"
 module Plumbing
   module Actor
     class Threaded
-      attr_reader :target
-
       def initialize target
         @target = target
         @queue = Concurrent::Array.new
@@ -18,7 +16,7 @@ module Plumbing
 
       # Send the message to the target and wrap the result
       def send_message(message_name, *args, **params, &block)
-        puts "->#{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})\n#{Thread.current.name}" if Plumbing.config.debug
+        Plumbing.config.logger.debug { "-> #{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})\n#{Thread.current.name}" }
         Message.new(@target, message_name, Plumbing::Actor.transporter.marshal(*args), Plumbing::Actor.transporter.marshal(params).first, block, Concurrent::MVar.new).tap do |message|
           @queue << message
           send_messages
@@ -26,6 +24,7 @@ module Plumbing
       end
 
       def safely(&)
+        Plumbing.config.logger.debug { "-> #{@target.class}#perform_safely\n#{Thread.current.name}" }
         send_message(:perform_safely, &)
         nil
       end
@@ -58,13 +57,13 @@ module Plumbing
         def call
           args = Plumbing::Actor.transporter.unmarshal(*packed_args)
           params = Plumbing::Actor.transporter.unmarshal(packed_params)
-          puts "=> #{target.class}##{message_name}(#{args.first.inspect}, #{params.first.inspect}, &#{!unsafe_block.nil?})\n#{Thread.current.name}" if Plumbing.config.debug
+          Plumbing.config.logger.debug { "---> #{target.class}##{message_name}(#{args.first.inspect}, #{params.first.inspect}, &#{!unsafe_block.nil?})\n#{Thread.current.name}" }
           value = target.send message_name, *args, **params.first, &unsafe_block
+          Plumbing.config.logger.debug { "===> #{target.class}##{message_name} => #{value}\n#{Thread.current.name}" }
 
           result.put Plumbing::Actor.transporter.marshal(value)
         rescue => ex
-          puts ex
-          puts ex.backtrace
+          Plumbing.config.logger.debug { "!!!! #{target.class}##{message_name} => #{ex}\n#{Thread.current.name}" }
           result.put ex
         end
 

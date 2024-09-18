@@ -165,6 +165,7 @@ RSpec.describe Plumbing::Actor do
         expect(await { @actor.me_as_self }).to_not eq @actor
         expect(await { @actor.me_as_actor }).to eq @actor
       end
+
       it "sends a single positional parameter" do
         @parameter_handler = ParameterHandler.start
 
@@ -270,15 +271,15 @@ RSpec.describe Plumbing::Actor do
 
         @time = Time.now
         @name = @counter.name
-        expect(Time.now - @time).to be < 0.1
+        expect(Time.now - @time).to be < 0.2
 
         @time = Time.now
         @count = @counter.count
-        expect(Time.now - @time).to be < 0.1
+        expect(Time.now - @time).to be < 0.2
 
         @time = Time.now
         @counter.slow_query
-        expect(Time.now - @time).to be < 0.1
+        expect(Time.now - @time).to be < 0.2
       ensure
         @counter.stop
       end

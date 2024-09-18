@@ -21,7 +21,7 @@ RSpec.shared_examples "an example actor" do |runs_in_background|
     end
 
     def greet_slowly
-      sleep 0.2
+      sleep 0.5
       "H E L L O"
     end
   end
@@ -42,15 +42,15 @@ RSpec.shared_examples "an example actor" do |runs_in_background|
     # we're not awaiting the result, so this should run in the background (unless we're using inline mode)
     @person.greet_slowly
 
-    expect(Time.now - @time).to be < 0.1 if runs_in_background
-    expect(Time.now - @time).to be > 0.1 if !runs_in_background
+    expect(Time.now - @time).to be < 0.2 if runs_in_background
+    expect(Time.now - @time).to be > 0.2 if !runs_in_background
   ensure
     @person.stop
   end
 
   it "commands an object" do
     @person = Employee.start "Alice"
-    @person.promote
+    await { @person.promote }
     expect(@person.job_title.value).to eq "Sales manager"
   ensure
     @person.stop

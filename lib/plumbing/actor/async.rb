@@ -9,20 +9,24 @@ module Plumbing
 
       def initialize target
         @target = target
-        @queue = []
-        @semaphore = ::Async::Semaphore.new(1)
+        @semaphore = ::Async::Semaphore.new(Plumbing.config.max_concurrency)
       end
 
       # Send the message to the target and wrap the result
-      def send_message(message_name, *, **, &)
+      def send_message(message_name, *args, **params, &block)
+        Plumbing.config.logger.debug { "-> #{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})" }
         task = @semaphore.async do
-          @target.send(message_name, *, **, &)
+          Plumbing.config.logger.debug { "---> #{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})" }
+          @target.send(message_name, *args, **params, &block)
         end
+        sleep 0.01
         Result.new(task)
       end
 
       def safely(&)
+        Plumbing.config.logger.debug { "-> #{@target.class}#perform_safely" }
         send_message(:perform_safely, &)
+        sleep 0.01
         nil
       end
 
@@ -32,6 +36,7 @@ module Plumbing
 
       Result = Data.define(:task) do
         def value
+          sleep 0.01
           Timeout.timeout(Plumbing::Actor.timeout) do
             task.wait
           end
