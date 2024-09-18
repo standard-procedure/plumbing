@@ -253,7 +253,7 @@ RSpec.describe Plumbing::Actor do
 
       @tester.do_safety_check
 
-      expect(true).to become_equal_to { @safety_check.called_from_actor_thread?.value }
+      expect { @safety_check.called_from_actor_thread?.value }.to become_true
     end
   end
 
@@ -289,7 +289,7 @@ RSpec.describe Plumbing::Actor do
 
         await { @counter.slowly_increment }
 
-        expect(101).to become_equal_to { @counter.count.value }
+        expect { @counter.count.value }.to become 101
         expect(Time.now - @time).to be > 0.1
       ensure
         @counter.stop
@@ -368,7 +368,7 @@ RSpec.describe Plumbing::Actor do
 
       @tester.do_safety_check
 
-      expect(true).to become_equal_to { @safety_check.called_from_actor_thread?.value }
+      expect { @safety_check.called_from_actor_thread?.value }.to become_true
     ensure
       @tester.stop
       @safety_check.stop

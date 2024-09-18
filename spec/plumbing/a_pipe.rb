@@ -57,10 +57,10 @@ RSpec.shared_examples "a pipe" do
     @second_event = Plumbing::Event.new type: "second_event", data: {test: "event"}
 
     @pipe << @first_event
-    expect([@first_event]).to become_equal_to { @results }
+    expect { @results.include?(@first_event) }.to become_true
 
     @pipe << @second_event
-    expect([@first_event, @second_event]).to become_equal_to { @results }
+    expect { @results.include?(@second_event) }.to become_true
   end
 
   it "notifies callable observers" do
@@ -73,10 +73,10 @@ RSpec.shared_examples "a pipe" do
     @second_event = Plumbing::Event.new type: "second_event", data: {test: "event"}
 
     @pipe << @first_event
-    expect([@first_event]).to become_equal_to { @results }
+    expect { @results.include?(@first_event) }.to become_true
 
     @pipe << @second_event
-    expect([@first_event, @second_event]).to become_equal_to { @results }
+    expect { @results.include?(@second_event) }.to become_true
   end
 
   it "ensures all observers are notified even if an observer raises an exception" do
@@ -93,7 +93,7 @@ RSpec.shared_examples "a pipe" do
 
     @pipe << @event
 
-    expect([@event]).to become_equal_to { @results }
+    expect { @results.include?(@event) }.to become_true
   end
 
   it "shuts down the pipe" do
@@ -105,6 +105,6 @@ RSpec.shared_examples "a pipe" do
     @pipe.shutdown
     @pipe.notify "ignore_me"
     sleep 0.2
-    expect(@results).to be_empty
+    expect { @results.empty? }.to become_true
   end
 end

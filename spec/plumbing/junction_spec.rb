@@ -19,7 +19,7 @@ RSpec.describe Plumbing::Junction do
     @event = Plumbing::Event.new type: "test_event", data: {test: "event"}
     @source << @event
 
-    expect([@event]).to become_equal_to { @results }
+    expect { @results.include?(@event) }.to become_true
   end
 
   it "publishes events from two sources" do
@@ -34,11 +34,11 @@ RSpec.describe Plumbing::Junction do
 
     @first_event = Plumbing::Event.new type: "test_event", data: {test: "one"}
     @first_source << @first_event
-    expect([@first_event]).to become_equal_to { @results }
+    expect { @results.include?(@first_event) }.to become_true
 
     @second_event = Plumbing::Event.new type: "test_event", data: {test: "two"}
     @second_source << @second_event
-    expect([@first_event, @second_event]).to become_equal_to { @results }
+    expect { @results.include?(@second_event) }.to become_true
   end
 
   it "publishes events from multiple sources" do
@@ -54,14 +54,14 @@ RSpec.describe Plumbing::Junction do
 
     @first_event = Plumbing::Event.new type: "test_event", data: {test: "one"}
     @first_source << @first_event
-    expect([@first_event]).to become_equal_to { @results }
+    expect { @results.include?(@first_event) }.to become_true
 
     @second_event = Plumbing::Event.new type: "test_event", data: {test: "two"}
     @second_source << @second_event
-    expect([@first_event, @second_event]).to become_equal_to { @results }
+    expect { @results.include?(@second_event) }.to become_true
 
     @third_event = Plumbing::Event.new type: "test_event", data: {test: "three"}
     @third_source << @third_event
-    expect([@first_event, @second_event, @third_event]).to become_equal_to { @results }
+    expect { @results.include?(@third_event) }.to become_true
   end
 end

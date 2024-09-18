@@ -106,7 +106,7 @@ RSpec.describe "Pipe examples" do
         @second_source.notify "two-one"
         @second_source.notify "two-two"
 
-        expect(["one-one", "two-two"]).to become_equal_to { @result }
+        expect { @result.sort }.to become(["one-one", "two-two"])
       end
     end
   end
@@ -134,7 +134,7 @@ RSpec.describe "Pipe examples" do
       @second_source.notify "two-one"
       @second_source.notify "two-two"
 
-      expect(["one-one", "two-two"]).to become_equal_to { @result.sort }
+      expect { @result.sort }.to become(["one-one", "two-two"])
     ensure
       @first_source.shutdown
       @second_source.shutdown

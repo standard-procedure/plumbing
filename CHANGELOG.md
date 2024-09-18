@@ -1,4 +1,9 @@
-## [0.4.4] - 2024-09-16
+## [0.4.5] - 2024-09-18
+
+ - `become` matchers available to other gems
+ - `wait_for`
+
+## [0.4.4] - 2024-09-18
 
  - Various bugfixes around the threading implementation
 

@@ -467,6 +467,45 @@ You can also use the same `@object.as type` to type-check instances against modu
   expect(@hungry.favourite_food).to eq "Ice cream"
 ```
 
+## Testing
+
+As soon as you're working in :async or :threaded mode, you'll find your tests become unpredictable.
+
+To help with this there are some helpers that you can include in your code.
+
+Firstly, you can wait for something to become true.  The `#wait_for` method is added into `Kernel` so it is available everywhere.  It repeatedly executes the given block until a truthy value is returned or the timeout is reached (at which point it raises a Timeout::Error). Note that you still need to use `await` (or call `#value`) to access return values from messages sent to actors.
+
+```ruby
+@target = SomeActor.start
+@subject = SomeOtherActor.start
+
+@subject.do_something_to @target
+
+wait_for do
+  await { @target.was_updated? }
+end
+
+```
+
+Secondly, if you're using RSpec, you can `require "plumbing/spec/become_matchers"` to add some extra expectation matchers.  These matchers use `wait_for` to repeatedly evaluate the given block until it reaches the expected value or times out.  The matchers are `become(value)`, `become_true`, `become_false`, `become_truthy` and `become_falsey`.  Note that you still need to use `await` (or call `#value`) to access return values from messages sent to actors.
+
+```ruby
+@target = SomeActor.start
+@subject = SomeOtherActor.start
+
+@subject.do_something_to @target
+
+expect { @target.was_updated?.value }.to become_true
+
+@employee = Employee.start
+
+expect { @employee.job_title.value }.to become "Sales assistant"
+
+@employee.promote!
+
+expect { @employee.job_title.value }.to become "Manager"
+```
+
 ## Installation
 
 Note: this gem is licensed under the [LGPL](/LICENCE).  This may or may not make it unsuitable for use by you or your company.
