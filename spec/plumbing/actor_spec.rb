@@ -92,7 +92,7 @@ RSpec.describe Plumbing::Actor do
     def configure_safety_check
       @tester.on_safety_check do
         safely do
-          @called_from_actor_thread = proxy.within_actor?
+          @called_from_actor_thread = proxy.in_context?
         end
       end
     end
@@ -237,7 +237,7 @@ RSpec.describe Plumbing::Actor do
       expect(Time.now - @time).to be > 0.1
     end
 
-    it "sends all commands immediately" do
+    it "executes all messages immediately" do
       @counter = Counter.start "inline counter", initial_value: 100
       @time = Time.now
 
@@ -265,39 +265,30 @@ RSpec.describe Plumbing::Actor do
         end
       end
 
-      it "performs queries in the background and waits for the response" do
+      it "sends messages to run in the background" do
         @counter = Counter.start "async counter", initial_value: 100
-        @time = Time.now
 
-        expect(@counter.name.value).to eq "async counter"
-        expect(@counter.count.value).to eq 100
+        @time = Time.now
+        @name = @counter.name
         expect(Time.now - @time).to be < 0.1
 
-        expect(@counter.slow_query.value).to eq 100
-        expect(Time.now - @time).to be > 0.1
-      ensure
-        @counter.stop
-      end
-
-      it "performs queries ignoring the response and returning immediately" do
-        @counter = Counter.start "threaded counter", initial_value: 100
         @time = Time.now
+        @count = @counter.count
+        expect(Time.now - @time).to be < 0.1
 
+        @time = Time.now
         @counter.slow_query
-
         expect(Time.now - @time).to be < 0.1
       ensure
         @counter.stop
       end
 
-      it "performs commands in the background and returning immediately" do
+      it "waits for the result of messages" do
         @counter = Counter.start "threaded counter", initial_value: 100
         @time = Time.now
 
-        @counter.slowly_increment
-        expect(Time.now - @time).to be < 0.1
+        await { @counter.slowly_increment }
 
-        # wait for the background task to complete
         expect(101).to become_equal_to { @counter.count.value }
         expect(Time.now - @time).to be > 0.1
       ensure

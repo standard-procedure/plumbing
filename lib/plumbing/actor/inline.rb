@@ -18,7 +18,7 @@ module Plumbing
         nil
       end
 
-      def within_actor? = true
+      def in_context? = true
 
       def stop = nil
 

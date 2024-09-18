@@ -8,7 +8,7 @@ module Plumbing
       nil
     end
 
-    def within_actor? = proxy.within_actor?
+    def in_context? = proxy.in_context?
 
     def stop = proxy.stop
 
