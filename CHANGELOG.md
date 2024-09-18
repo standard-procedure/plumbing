@@ -1,3 +1,7 @@
+## [0.4.4] - 2024-09-16
+
+ - Various bugfixes around the threading implementation
+
 ## [0.4.1] - 2024-09-16
 
  - Added `safely` to allow actors to run code within their own context
