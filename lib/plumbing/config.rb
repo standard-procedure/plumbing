@@ -1,6 +1,6 @@
 # Pipes, pipelines, actors and rubber ducks
 module Plumbing
-  Config = Data.define :mode, :actor_proxy_classes, :timeout do
+  Config = Data.define :mode, :actor_proxy_classes, :timeout, :debug do
     def actor_proxy_class_for target_class
       actor_proxy_classes[target_class]
     end
@@ -45,7 +45,7 @@ module Plumbing
   private_class_method :set_configuration_and_yield
 
   def self.configs
-    @configs ||= [Config.new(mode: :inline, timeout: 30, actor_proxy_classes: {})]
+    @configs ||= [Config.new(mode: :inline, timeout: 30, actor_proxy_classes: {}, debug: false)]
   end
   private_class_method :configs
 end
