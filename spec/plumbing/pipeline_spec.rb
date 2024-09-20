@@ -4,7 +4,8 @@ require "dry/validation"
 RSpec.describe Plumbing::Pipeline do
   it "defines a single operation that returns a value based upon the input parameters" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Addition < Plumbing::Pipeline
+    class Addition
+      include Plumbing::Pipeline
       perform :addition
 
       private
@@ -20,7 +21,8 @@ RSpec.describe Plumbing::Pipeline do
 
   it "defines a sequence of commands that are executed in order" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Sequence < Plumbing::Pipeline
+    class Sequence
+      include Plumbing::Pipeline
       perform :first_step
       perform :second_step
       perform :third_step
@@ -47,7 +49,8 @@ RSpec.describe Plumbing::Pipeline do
   context "embedding an external command" do
     it "specifies the command with a string" do
       # standard:disable Lint/ConstantDefinitionInBlock
-      class InnerByName < Plumbing::Pipeline
+      class InnerByName
+        include Plumbing::Pipeline
         perform :embedded_step
 
         private
@@ -57,7 +60,8 @@ RSpec.describe Plumbing::Pipeline do
         end
       end
 
-      class OuterByName < Plumbing::Pipeline
+      class OuterByName
+        include Plumbing::Pipeline
         perform :first_step
         perform :second_step, using: "InnerByName"
         perform :third_step
@@ -79,7 +83,8 @@ RSpec.describe Plumbing::Pipeline do
 
     it "specifies the command with a class" do
       # standard:disable Lint/ConstantDefinitionInBlock
-      class InnerByClass < Plumbing::Pipeline
+      class InnerByClass
+        include Plumbing::Pipeline
         perform :embedded_step
 
         private
@@ -89,7 +94,8 @@ RSpec.describe Plumbing::Pipeline do
         end
       end
 
-      class OuterByClass < Plumbing::Pipeline
+      class OuterByClass
+        include Plumbing::Pipeline
         perform :first_step
         perform :second_step, using: InnerByClass
         perform :third_step
@@ -112,7 +118,8 @@ RSpec.describe Plumbing::Pipeline do
 
   it "defines an operation that does something but returns the provided input untouched" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Passthrough < Plumbing::Pipeline
+    class Passthrough
+      include Plumbing::Pipeline
       execute :external_operation
 
       private
@@ -129,7 +136,8 @@ RSpec.describe Plumbing::Pipeline do
 
   it "raises a PreConditionError if the input fails the precondition test" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class PreConditionCheck < Plumbing::Pipeline
+    class PreConditionCheck
+      include Plumbing::Pipeline
       pre_condition :has_first_key do |input|
         input.key?(:first)
       end
@@ -154,7 +162,8 @@ RSpec.describe Plumbing::Pipeline do
 
   it "raises a PreConditionError if the input fails to validate against a Dry::Validation::Contract" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class Validated < Plumbing::Pipeline
+    class Validated
+      include Plumbing::Pipeline
       validate_with "Validated::Input"
       perform :say_hello
 
@@ -183,7 +192,8 @@ RSpec.describe Plumbing::Pipeline do
 
   it "raises a PostConditionError if the outputs fail the postcondition test" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class PostConditionCheck < Plumbing::Pipeline
+    class PostConditionCheck
+      include Plumbing::Pipeline
       post_condition :should_be_integer do |result|
         result.instance_of? Integer
       end

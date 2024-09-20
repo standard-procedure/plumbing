@@ -12,7 +12,8 @@ cat animals.txt | grep "dog" | wc -l
 This could be implemented as a Pipeline like so:
 ```ruby
 require "plumbing"
-class DogCounter < Plumbing::Pipeline
+class DogCounter
+  include Plumbing::Pipeline
   perform :read_file
   perform :filter_dogs
   perform :count_lines

@@ -1,4 +1,8 @@
-## [0.4.5] - 2024-09-18
+## [0.4.5] - 2024-09-20
+
+ - Changed Plumbing::Pipeline into a module
+
+## [0.4.5] - 2024-09-20
 
  - `become` matchers available to other gems
  - `wait_for`

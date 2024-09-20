@@ -1,5 +1,5 @@
 module Plumbing
-  class Pipeline
+  module Pipeline
     # Defining the operations that will be performed on the input data
     module Operations
       # Add an operation to the pipeline

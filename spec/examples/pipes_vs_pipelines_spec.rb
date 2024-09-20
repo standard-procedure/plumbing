@@ -4,7 +4,8 @@ require "plumbing/actor/threaded"
 
 RSpec.describe "Pipes vs Pipelines examples" do
   # standard:disable Lint/ConstantDefinitionInBlock
-  class DogCounter < Plumbing::Pipeline
+  class DogCounter
+    include Plumbing::Pipeline
     perform :read_file
     perform :filter_dogs
     perform :count_lines

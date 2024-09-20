@@ -4,7 +4,8 @@ require "dry/validation"
 RSpec.describe "Pipeline examples" do
   it "builds a simple pipeline of operations adding to an array with pre-conditions and post-conditions" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class BuildArray < Plumbing::Pipeline
+    class BuildArray
+      include Plumbing::Pipeline
       perform :add_first
       perform :add_second
       perform :add_third
@@ -34,7 +35,8 @@ RSpec.describe "Pipeline examples" do
 
   it "builds a simple pipeline of operations using an external class to implement one of the steps" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class ExternalStep < Plumbing::Pipeline
+    class ExternalStep
+      include Plumbing::Pipeline
       perform :add_item_to_array
 
       private
@@ -42,7 +44,8 @@ RSpec.describe "Pipeline examples" do
       def add_item_to_array(input) = input << "external"
     end
 
-    class BuildSequenceWithExternalStep < Plumbing::Pipeline
+    class BuildSequenceWithExternalStep
+      include Plumbing::Pipeline
       perform :add_first
       perform :add_second, using: "ExternalStep"
       perform :add_third
@@ -60,7 +63,8 @@ RSpec.describe "Pipeline examples" do
 
   it "uses a dry-validation contract to test the input parameters" do
     # standard:disable Lint/ConstantDefinitionInBlock
-    class SayHello < Plumbing::Pipeline
+    class SayHello
+      include Plumbing::Pipeline
       validate_with "SayHello::Input"
       perform :say_hello
 

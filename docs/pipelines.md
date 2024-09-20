@@ -18,7 +18,8 @@ Also take a look at [pipes vs pipelines](/docs/pipes_vs_pipelines.md).
 
 ```ruby
   require "plumbing"
-  class BuildArray < Plumbing::Pipeline
+  class BuildArray
+    include Plumbing::Pipeline
     perform :add_first
     perform :add_second
     perform :add_third
@@ -55,7 +56,8 @@ Also take a look at [pipes vs pipelines](/docs/pipes_vs_pipelines.md).
   require "plumbing"
   require "dry/validation"
 
-  class SayHello < Plumbing::Pipeline
+  class SayHello
+    include Plumbing::Pipeline
     validate_with "SayHello::Input"
     perform :say_hello
 
@@ -87,7 +89,8 @@ Also take a look at [pipes vs pipelines](/docs/pipes_vs_pipelines.md).
 
 ```ruby
   require "plumbing"
-  class ExternalStep < Plumbing::Pipeline
+  class ExternalStep
+    include Plumbing::Pipeline
     perform :add_item_to_array
 
     private

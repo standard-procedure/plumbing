@@ -1,5 +1,5 @@
 module Plumbing
-  class Pipeline
+  module Pipeline
     # Validate input and output data with pre and post conditions or [Dry::Validation::Contract]s
     module Contracts
       # @param name [Symbol] the name of the precondition
