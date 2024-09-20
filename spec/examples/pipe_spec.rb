@@ -10,8 +10,8 @@ RSpec.describe "Pipe examples" do
         @source = Plumbing::Pipe.start
 
         @result = []
-        @source.add_observer do |event|
-          @result << event.type
+        @source.add_observer do |event_name, **data|
+          @result << event_name
         end
 
         @source.notify "something_happened", message: "But what was it?"
@@ -21,13 +21,13 @@ RSpec.describe "Pipe examples" do
       it "filters events" do
         @source = Plumbing::Pipe.start
 
-        @filter = Plumbing::Filter.start source: @source do |event|
-          %w[important urgent].include? event.type
+        @filter = Plumbing::Pipe::Filter.start source: @source do |event_name, **data|
+          %w[important urgent].include? event_name
         end
 
         @result = []
-        @filter.add_observer do |event|
-          @result << event.type
+        @filter.add_observer do |event_name, **data|
+          @result << event_name
         end
 
         @source.notify "important", message: "ALERT! ALERT!"
@@ -39,18 +39,18 @@ RSpec.describe "Pipe examples" do
 
       it "allows for custom filters" do
         # standard:disable Lint/ConstantDefinitionInBlock
-        class EveryThirdEvent < Plumbing::CustomFilter
+        class EveryThirdEvent < Plumbing::Pipe::CustomFilter
           def initialize source:
             super
             @events = []
           end
 
-          def received event
+          def received event_name, **data
             safely do
-              @events << event
+              @events << event_name
               if @events.count >= 3
                 @events.clear
-                self << event
+                notify event_name, **data
               end
             end
           end
@@ -61,8 +61,8 @@ RSpec.describe "Pipe examples" do
         @filter = EveryThirdEvent.start(source: @source)
 
         @result = []
-        @filter.add_observer do |event|
-          @result << event.type
+        @filter.add_observer do |event_name, **data|
+          @result << event_name
         end
 
         1.upto 10 do |i|
@@ -76,11 +76,11 @@ RSpec.describe "Pipe examples" do
         @first_source = Plumbing::Pipe.start
         @second_source = Plumbing::Pipe.start
 
-        @junction = Plumbing::Junction.start @first_source, @second_source
+        @junction = Plumbing::Pipe::Junction.start @first_source, @second_source
 
         @result = []
-        @junction.add_observer do |event|
-          @result << event.type
+        @junction.add_observer do |event_name, **data|
+          @result << event_name
         end
 
         @first_source.notify "one"
@@ -94,13 +94,13 @@ RSpec.describe "Pipe examples" do
           Sync do
             @first_source = Plumbing::Pipe.start
             @second_source = Plumbing::Pipe.start
-            @junction = Plumbing::Junction.start @first_source, @second_source
-            @filter = Plumbing::Filter.start source: @junction do |event|
-              %w[one-one two-two].include? event.type
+            @junction = Plumbing::Pipe::Junction.start @first_source, @second_source
+            @filter = Plumbing::Pipe::Filter.start source: @junction do |event_name, **data |
+              %w[one-one two-two].include? event_name
             end
             @result = []
-            @filter.add_observer do |event|
-              @result << event.type
+            @filter.add_observer do |event_name, **data |
+              @result << event_name
             end
 
             @first_source.notify "one-one"
@@ -119,14 +119,14 @@ RSpec.describe "Pipe examples" do
 
           @first_source = Plumbing::Pipe.start
           @second_source = Plumbing::Pipe.start
-          @junction = Plumbing::Junction.start @first_source, @second_source
+          @junction = Plumbing::Pipe::Junction.start @first_source, @second_source
 
-          @filter = Plumbing::Filter.start source: @junction do |event|
-            %w[one-one two-two].include? event.type
+          @filter = Plumbing::Pipe::Filter.start source: @junction do |event_name, **data|
+            %w[one-one two-two].include? event_name
           end
           await do
-            @filter.add_observer do |event|
-              @result << event.type
+            @filter.add_observer do |event_name, **data|
+              @result << event_name
             end
           end
 

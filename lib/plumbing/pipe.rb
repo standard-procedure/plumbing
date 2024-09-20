@@ -3,22 +3,19 @@ module Plumbing
   class Pipe
     include Plumbing::Actor
 
-    async :notify, :<<, :remove_observer, :add_observer, :is_observer?, :shutdown
+    async :notify, :remove_observer, :add_observer, :is_observer?, :shutdown
 
-    # Push an event into the pipe
-    # @param event [Plumbing::Event] the event to push into the pipe
-    def << event
-      raise Plumbing::InvalidEvent.new event unless event.is_a? Plumbing::Event
-      dispatch event
-    end
-
-    # A shortcut to creating and then pushing an event
-    # @param event_type [String] representing the type of event this is
+    # Notify observers about an event
+    # @param event_name [String] representing the type of event this is
     # @param data [Hash] representing the event-specific data to be passed to the observers
-    def notify event_type, data = nil
-      Plumbing.config.logger.debug { "-> #{@self.class}#notify #{event_type}" }
-      Event.new(type: event_type, data: data).tap do |event|
-        self << event
+    def notify event_name, **data
+      Plumbing.config.logger.debug { "-> #{self.class}#notify #{event_name}" }
+      observers.each do |observer|
+        Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event_name} to #{observer}" }
+        observer.call event_name, **data
+      rescue => ex
+        Plumbing.config.logger.error { "!!!! #{self.class}#dispatch #{event_name} => #{ex}" }
+        ex
       end
     end
 
@@ -53,24 +50,14 @@ module Plumbing
       stop
     end
 
-    protected
-
-    # Dispatch an event to all observers
-    # @param event [Plumbing::Event]
-    # Enumerates all observers and `calls` them with this event
-    # Discards any errors raised by the observer so that all observers will be successfully notified
-    def dispatch event
-      observers.each do |observer|
-        Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event.type} to #{observer}" }
-        observer.call event
-      rescue => ex
-        Plumbing.config.logger.error { "!!!! #{self.class}#dispatch #{event.type} => #{ex}" }
-        ex
-      end
-    end
+    private
 
     def observers
       @observers ||= []
     end
+
+    require_relative "pipe/filter"
+    require_relative "pipe/junction"
+
   end
 end

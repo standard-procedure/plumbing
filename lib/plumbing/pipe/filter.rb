@@ -1,7 +1,7 @@
 require_relative "custom_filter"
 module Plumbing
   # A pipe that filters events from a source pipe
-  class Filter < CustomFilter
+  class Pipe::Filter < Pipe::CustomFilter
     # Chain this pipe to the source pipe
     # @param source [Plumbing::Observable] the source from which to receive and filter events
     # @param &accepts [Block] a block that returns a boolean value - true to accept the event, false to reject it
@@ -14,9 +14,9 @@ module Plumbing
 
     protected
 
-    def received(event)
-      return nil unless @accepts.call event
-      dispatch event
+    def received(event_name, **data)
+      return nil unless @accepts.call event_name, **data
+      notify event_name, **data
     end
   end
 end

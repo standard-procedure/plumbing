@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe Plumbing::Filter do
+RSpec.describe Plumbing::Pipe::Filter do
   Plumbing::Spec.modes do
     context "In #{Plumbing.config.mode} mode" do
       it "raises a TypeError if it is connected to a non-Pipe" do
@@ -12,19 +12,19 @@ RSpec.describe Plumbing::Filter do
       it "accepts event types" do
         @pipe = Plumbing::Pipe.start
 
-        @filter = described_class.start source: @pipe do |event|
-          %w[first_type third_type].include? event.type.to_s
+        @filter = described_class.start source: @pipe do |event_name, **data|
+          %w[first_type third_type].include? event_name
         end
 
         @results = []
-        @filter.add_observer do |event|
-          @results << event
+        @filter.add_observer do |event_name, **data|
+          @results << event_name
         end
 
-        @pipe << Plumbing::Event.new(type: "first_type", data: nil)
+        @pipe.notify "first_type"
         expect(@results.count).to eq 1
 
-        @pipe << Plumbing::Event.new(type: "second_type", data: nil)
+        @pipe.notify "second_type"
         expect(@results.count).to eq 1
 
         # Use the alternative syntax
