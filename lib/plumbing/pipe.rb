@@ -11,8 +11,8 @@ module Plumbing
     def notify event_name, **data
       Plumbing.config.logger.debug { "-> #{self.class}#notify #{event_name}" }
       observers.each do |observer|
-        Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event_name} to #{observer}" }
-        observer.call event_name, **data
+        Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event_name}(#{data}) to #{observer}" }
+        observer.call event_name, data
       rescue => ex
         Plumbing.config.logger.error { "!!!! #{self.class}#dispatch #{event_name} => #{ex}" }
         ex

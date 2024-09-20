@@ -2,7 +2,7 @@ RSpec.shared_examples "a pipe" do
   it "adds a block observer" do
     @pipe = described_class.start
     @observer = await do
-      @pipe.add_observer do |event_name, **data|
+      @pipe.add_observer do |event_name, data|
         puts event_name
       end
     end
@@ -11,7 +11,7 @@ RSpec.shared_examples "a pipe" do
 
   it "adds a callable observer" do
     @pipe = described_class.start
-    @proc = ->(event_name, **data) { puts event_name }
+    @proc = ->(event_name, data) { puts event_name }
 
     @pipe.add_observer @proc
 
@@ -26,7 +26,7 @@ RSpec.shared_examples "a pipe" do
 
   it "removes an observer" do
     @pipe = described_class.start
-    @proc = ->(event_name, **data) { puts event_name }
+    @proc = ->(event_name, data) { puts event_name }
 
     @pipe.remove_observer @proc
 
@@ -36,7 +36,7 @@ RSpec.shared_examples "a pipe" do
   it "notifies block observers" do
     @pipe = described_class.start
     @results = []
-    @observer = @pipe.add_observer do |event_name, **data|
+    @observer = @pipe.add_observer do |event_name, data|
       @results << event_name
     end
 
@@ -50,7 +50,7 @@ RSpec.shared_examples "a pipe" do
   it "notifies callable observers" do
     @pipe = described_class.start
     @results = []
-    @observer = ->(event_name, **data) { @results << event_name }
+    @observer = ->(event_name, data) { @results << event_name }
     @pipe.add_observer @observer
 
     @pipe.notify "first_event", test: "event"
@@ -63,10 +63,10 @@ RSpec.shared_examples "a pipe" do
   it "ensures all observers are notified even if an observer raises an exception" do
     @pipe = described_class.start
     @results = []
-    @failing_observer = @pipe.add_observer do |event_name, **data|
+    @failing_observer = @pipe.add_observer do |event_name, data|
       raise "Failed processing #{event_name}"
     end
-    @working_observer = @pipe.add_observer do |event_name, **data|
+    @working_observer = @pipe.add_observer do |event_name, data|
       @results << event_name
     end
 
@@ -78,7 +78,7 @@ RSpec.shared_examples "a pipe" do
   it "shuts down the pipe" do
     @pipe = described_class.start
     @results = []
-    @observer = ->(event_name, **data) { @results << event_name }
+    @observer = ->(event_name, data) { @results << event_name }
     @pipe.add_observer @observer
 
     @pipe.shutdown

@@ -12,21 +12,21 @@ RSpec.describe Plumbing::Pipe::CustomFilter do
       it "defines a custom filter" do
         # standard:disable Lint/ConstantDefinitionInBlock
         class ReversingFilter < Plumbing::Pipe::CustomFilter
-          def received(event_name, **data) = notify event_name.reverse, **data
+          def received(event_name, data) = notify event_name.reverse, **data
         end
         # standard:enable Lint/ConstantDefinitionInBlock
 
         @pipe = Plumbing::Pipe.start
         @filter = ReversingFilter.start(source: @pipe)
         @result = []
-        @filter.add_observer do |event_name, **data|
+        @filter.add_observer do |event_name, data|
           @result << event_name
         end
 
         @pipe.notify "hello"
         @pipe.notify "world"
 
-        expect(@result).to eq ["olleh", "dlrow"]
+        expect { @result }.to become ["olleh", "dlrow"]
       end
     end
   end

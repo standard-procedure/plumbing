@@ -14,9 +14,10 @@ module Plumbing
 
     protected
 
-    def received(event_name, **data)
-      return nil unless @accepts.call event_name, **data
-      notify event_name, **data
+    def received(event_name, data)
+      safely do
+        notify event_name, **data if @accepts.call(event_name, data)
+      end
     end
   end
 end
