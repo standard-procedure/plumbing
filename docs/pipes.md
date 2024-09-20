@@ -15,7 +15,7 @@ Also take a look at [pipes vs pipelines](/docs/pipes_vs_pipelines.md).
 @source = Plumbing::Pipe.start
 
 @result = []
-@source.add_observer do |event_name, **data|
+@source.add_observer do |event_name, data|
   @result << event_name
 end
 
@@ -27,12 +27,12 @@ expect(@result).to eq ["something_happened"]
 ```ruby
 @source = Plumbing::Pipe.start
 
-@filter = Plumbing::Pipe::Filter.start source: @source do |event_name, **data|
+@filter = Plumbing::Pipe::Filter.start source: @source do |event_name, data|
   %w[important urgent].include? event_name
 end
 
 @result = []
-@filter.add_observer do |event_name, **data|
+@filter.add_observer do |event_name, data|
   @result << event_name
 end
 
@@ -52,12 +52,12 @@ class EveryThirdEvent < Plumbing::Pipe::CustomFilter
     @events = []
   end
 
-  def received event_name, **data
+  def received event_name, data
     safely do
       @events << event_name
       if @events.count >= 3
         @events.clear
-        notify event_name, **data
+        notify event_name, data
       end
     end
   end
@@ -68,7 +68,7 @@ end
 @filter = EveryThirdEvent.start(source: @source)
 
 @result = []
-@filter.add_observer do |event_name, **data|
+@filter.add_observer do |event_name, data|
   @result << event_name
 end
 
@@ -87,7 +87,7 @@ expect(@result).to eq ["3", "6", "9"]
 @junction = Plumbing::Pipe::Junction.start @first_source, @second_source
 
 @result = []
-@junction.add_observer do |event_name, **data|
+@junction.add_observer do |event_name, data|
   @result << event_name
 end
 
