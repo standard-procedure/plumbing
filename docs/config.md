@@ -1,5 +1,7 @@
 # Configuration
 
+## Mode
+
 The most important configuration setting is the `mode`, which governs how background tasks are handled.
 
 By default it is `:inline`, so every command or query is handled synchronously.  This is the ruby behaviour you know and love (although see the section on `await` below).
@@ -43,3 +45,19 @@ If you are running a test suite, you can temporarily update the configuration by
   # => :inline
 ```
 
+## Logger
+
+The configuration includes a default logger that is set to write to `stdout`.  The log level is set to `info`.
+
+To understand what Plumbing is doing, under the hood, you can set the log level to `debug`:
+
+```ruby
+Plumbing.config.logger.level = :debug
+```
+This is especially useful if using actors (or pipes) and you are getting odd asynchronous behaviour.
+
+Or you can replace the logger with your own:
+
+```ruby
+Plumbing.configure logger: MyFancyLogger.new
+```
