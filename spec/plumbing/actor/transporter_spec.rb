@@ -134,6 +134,18 @@ RSpec.describe Plumbing::Actor::Transporter do
       expect(@transport).to eq [@record]
     end
 
+    it "deals with errors when unpacking a Global ID" do
+      @transporter = described_class.new
+
+      @record = Record.new "123"
+      @global_id = @record.to_global_id.to_s
+      puts @global_id
+
+      @transport = @transporter.unmarshal @global_id
+
+      expect(@transport).to eq [@record]
+    end
+
     it "converts Global ID strings within arrays to objects" do
       @transporter = described_class.new
 
