@@ -139,11 +139,13 @@ RSpec.describe Plumbing::Actor::Transporter do
 
       @record = Record.new "123"
       @global_id = @record.to_global_id.to_s
-      puts @global_id
+
+      # simulate deleting the reecord
+      allow(GlobalID::Locator).to receive(:locate).with(@global_id).and_raise(RuntimeError)
 
       @transport = @transporter.unmarshal @global_id
 
-      expect(@transport).to eq [@record]
+      expect(@transport).to eq [@global_id]
     end
 
     it "converts Global ID strings within arrays to objects" do

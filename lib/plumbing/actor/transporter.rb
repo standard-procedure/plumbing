@@ -55,6 +55,9 @@ module Plumbing
 
       def unpack_string argument
         argument.start_with?("gid://") ? GlobalID::Locator.locate(argument) : argument
+      rescue => ex
+        Plumbing.config.logger.error "!!!! #{self.class}##{__callee__} - #{argument} => #{ex}"
+        argument
       end
     end
   end

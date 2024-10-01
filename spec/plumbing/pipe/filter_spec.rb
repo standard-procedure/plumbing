@@ -22,14 +22,14 @@ RSpec.describe Plumbing::Pipe::Filter do
         end
 
         @pipe.notify "first_type"
-        expect{ @results.count }.to become 1
+        expect { @results.count }.to become 1
 
         @pipe.notify "second_type"
-        expect{ @results.count }.to become 1
+        expect { @results.count }.to become 1
 
         # Use the alternative syntax
         @pipe.notify "third_type"
-        expect{ @results.count }.to become 2
+        expect { @results.count }.to become 2
       end
     end
   end

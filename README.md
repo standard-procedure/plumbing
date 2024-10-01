@@ -48,7 +48,7 @@ Plumbing.config mode: :async
 - [ ] Add a debouncing filter for pipes
 - [ ] Pass the mode as a block parameter in `Plumbing::Spec.modes`
 - [ ] Move Plumbing::Actor::Transporter to Plumbing::Transporter ?? (planning to use it outside of Plumbing so would make sense not to imply it is tied to Actors)
-- [ ] Ensure transporters deal with GlobalID models not being found / errors when unpacking
+- [X] Ensure transporters deal with GlobalID models not being found / errors when unpacking
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
