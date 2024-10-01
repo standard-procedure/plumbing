@@ -9,12 +9,12 @@ module Plumbing
     # @param event_name [String] representing the type of event this is
     # @param data [Hash] representing the event-specific data to be passed to the observers
     def notify event_name, **data
-      Plumbing.config.logger.debug { "-> #{self.class}#notify #{event_name}" }
+      Plumbing.config.logger.debug { "-> #{self.class}##{__callee__} #{event_name}" }
       observers.each do |observer|
-        Plumbing.config.logger.debug { "===> #{self.class}#dispatch #{event_name}(#{data}) to #{observer}" }
+        Plumbing.config.logger.debug { "===> #{self.class}#call #{event_name}(#{data}) to #{observer}" }
         observer.call event_name, data
       rescue => ex
-        Plumbing.config.logger.error { "!!!! #{self.class}#dispatch #{event_name} => #{ex}" }
+        Plumbing.config.logger.error { "!!!! #{self.class}##{__callee__} #{event_name} => #{ex}" }
         ex
       end
     end
