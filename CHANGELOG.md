@@ -1,3 +1,11 @@
+## [0.5.1] - 2024-10-08
+
+ - Added exception handling for Pipeline preconditions
+
+## [0.5.0] - 2024-09-20
+
+ - Feature complete?
+
 ## [0.4.5] - 2024-09-20
 
  - Changed Plumbing::Pipeline into a module
