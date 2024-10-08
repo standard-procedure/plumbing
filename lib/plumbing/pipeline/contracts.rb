@@ -7,7 +7,7 @@ module Plumbing
       # @yield [Object] input the input data to be validated
       # @yieldreturn [Boolean] true to accept the input, false to reject it
       def pre_condition name, &validator
-        pre_conditions[name.to_sym] = validator
+        pre_conditions << ConditionValidator.new(name.to_s, validator)
       end
 
       # @param [String] contract_class the class name of the [Dry::Validation::Contract] that will be used to validate the input data
@@ -20,17 +20,21 @@ module Plumbing
       # @yield [Object] output the output data to be validated
       # @yieldreturn [Boolean] true to accept the output, false to reject it
       def post_condition name, &validator
-        post_conditions[name.to_sym] = validator
+        post_conditions << ConditionValidator.new(name.to_s, validator)
       end
 
       private
 
+      class ConditionValidator < Struct.new(:name, :validator)
+        def call(input) = validator.call input
+      end
+
       def pre_conditions
-        @pre_conditions ||= {}
+        @pre_conditions ||= []
       end
 
       def post_conditions
-        @post_conditions ||= {}
+        @post_conditions ||= []
       end
 
       def validate_contract_for input
@@ -41,18 +45,22 @@ module Plumbing
       end
 
       def validate_preconditions_for input
-        failed_preconditions = pre_conditions.select do |name, validator|
-          !validator.as(Callable).call(input)
+        failed_preconditions = pre_conditions.select do |validator|
+          !validator.call(input)
         rescue
           true
         end
-        raise PreConditionError, failed_preconditions.keys.join(", ") if failed_preconditions.any?
+        raise PreConditionError, failed_preconditions.map(&:name).join(", ") if failed_preconditions.any?
         input
       end
 
       def validate_postconditions_for output
-        failed_postconditions = post_conditions.select { |name, validator| !validator.as(Callable).call(output) }
-        raise PostConditionError, failed_postconditions.keys.join(", ") if failed_postconditions.any?
+        failed_postconditions = post_conditions.select do |validator|
+          !validator.call(output)
+        rescue
+          true
+        end
+        raise PostConditionError, failed_postconditions.map(&:name).join(", ") if failed_postconditions.any?
         output
       end
     end

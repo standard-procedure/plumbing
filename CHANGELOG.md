@@ -1,3 +1,7 @@
+## [0.5.2] - 2024-10-08
+
+ - Ensure preconditions are called in order
+
 ## [0.5.1] - 2024-10-08
 
  - Added exception handling for Pipeline preconditions
