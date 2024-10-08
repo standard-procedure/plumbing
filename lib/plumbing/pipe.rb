@@ -58,6 +58,5 @@ module Plumbing
 
     require_relative "pipe/filter"
     require_relative "pipe/junction"
-
   end
 end
