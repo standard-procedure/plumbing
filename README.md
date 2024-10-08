@@ -41,9 +41,14 @@ require 'plumbing'
 Plumbing.config mode: :async
 ```
 
-
-
 ## Development
+
+### To Do
+
+- [ ] Add a debouncing filter for pipes
+- [ ] Pass the mode as a block parameter in `Plumbing::Spec.modes`
+- [ ] Move Plumbing::Actor::Transporter to Plumbing::Transporter ?? (planning to use it outside of Plumbing so would make sense not to imply it is tied to Actors)
+- [X] Ensure transporters deal with GlobalID models not being found / errors when unpacking
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
@@ -51,7 +56,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/standard_procedure/plumbing. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/standard_procedure/plumbing/blob/main/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at <https://github.com/standard_procedure/plumbing>. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/standard_procedure/plumbing/blob/main/CODE_OF_CONDUCT.md).
 
 ## Code of Conduct
 
