@@ -41,7 +41,11 @@ module Plumbing
       end
 
       def validate_preconditions_for input
-        failed_preconditions = pre_conditions.select { |name, validator| !validator.as(Callable).call(input) }
+        failed_preconditions = pre_conditions.select do |name, validator|
+          !validator.as(Callable).call(input)
+        rescue
+          true
+        end
         raise PreConditionError, failed_preconditions.keys.join(", ") if failed_preconditions.any?
         input
       end

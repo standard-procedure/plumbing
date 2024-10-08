@@ -160,6 +160,27 @@ RSpec.describe Plumbing::Pipeline do
     expect { PreConditionCheck.new.call(first: "First") }.to raise_error(Plumbing::PreConditionError, "has_second_key")
   end
 
+  it "raises a PreConditionError if the precondition test raises an exception" do
+    # standard:disable Lint/ConstantDefinitionInBlock
+    class PreConditionException
+      include Plumbing::Pipeline
+      pre_condition :check_for_danger do |input|
+        raise "DANGER - something went wrong"
+      end
+
+      perform :do_something
+
+      private
+
+      def do_something input
+        "#{input[:first]} #{input[:second]}"
+      end
+    end
+    # standard:enable Lint/ConstantDefinitionInBlock
+
+    expect { PreConditionException.new.call(first: "First") }.to raise_error(Plumbing::PreConditionError, "check_for_danger")
+  end
+
   it "raises a PreConditionError if the input fails to validate against a Dry::Validation::Contract" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Validated
