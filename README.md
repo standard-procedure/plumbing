@@ -45,8 +45,9 @@ Plumbing.config mode: :async
 
 ### To Do
 
-- [ ] Add a debouncing filter for pipes
+- [ ] Add a buffered and a debouncing filter for pipes
 - [ ] Pass the mode as a block parameter in `Plumbing::Spec.modes`
+- [ ] Separate modes into their own object (to allow registration of new modes)
 - [ ] Move Plumbing::Actor::Transporter to Plumbing::Transporter ?? (planning to use it outside of Plumbing so would make sense not to imply it is tied to Actors)
 - [X] Ensure transporters deal with GlobalID models not being found / errors when unpacking
 
