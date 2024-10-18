@@ -5,7 +5,7 @@ module Plumbing
     class Rails < Threaded
       protected
 
-      def in_context(&)
+      def in_actor_thread(&)
         super do
           Rails.application.executor.wrap(&)
         end
