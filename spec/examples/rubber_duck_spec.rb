@@ -93,16 +93,21 @@ RSpec.describe "Rubber Duck examples" do
       end
     end
     # standard:enable Lint/ConstantDefinitionInBlock
+
+    puts "HELLO 1"
     @porsche_911 = ClassExample::CarData.new "Porsche", "911", "black"
     expect { @porsche_911.as ClassExample::Person }.to raise_error(TypeError)
 
+    puts "HELLO 2"
     @alice = ClassExample::PersonWhoLikesFood.new "Alice", "Aardvark", "alice@example.com", "Ice cream"
 
+    puts "HELLO 3"
     @person = @alice.as ClassExample::Person
     expect(@person.first_name).to eq "Alice"
     expect(@person.email).to eq "alice@example.com"
     expect { @person.favourite_food }.to raise_error(NoMethodError)
 
+    puts "HELLO 4"
     @hungry = @person.as ClassExample::PersonWhoLikesFood
     expect(@hungry.favourite_food).to eq "Ice cream"
   end

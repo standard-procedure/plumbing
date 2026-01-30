@@ -6,6 +6,7 @@ RSpec.describe "Pipeline examples" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class BuildArray
       include Plumbing::Pipeline
+
       perform :add_first
       perform :add_second
       perform :add_third
@@ -37,6 +38,7 @@ RSpec.describe "Pipeline examples" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class ExternalStep
       include Plumbing::Pipeline
+
       perform :add_item_to_array
 
       private
@@ -46,6 +48,7 @@ RSpec.describe "Pipeline examples" do
 
     class BuildSequenceWithExternalStep
       include Plumbing::Pipeline
+
       perform :add_first
       perform :add_second, using: "ExternalStep"
       perform :add_third
@@ -65,6 +68,7 @@ RSpec.describe "Pipeline examples" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class SayHello
       include Plumbing::Pipeline
+
       validate_with "SayHello::Input"
       perform :say_hello
 
@@ -80,7 +84,7 @@ RSpec.describe "Pipeline examples" do
           required(:email).filled(:string)
         end
         rule :email do
-          key.failure("must be a valid email") unless /\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i.match? value
+          key.failure("must be a valid email") unless /\A[\w+\-.]+@[a-z\d-]+(\.[a-z\d-]+)*\.[a-z]+\z/i.match? value
         end
       end
     end

@@ -5,6 +5,7 @@ RSpec.describe Plumbing::Actor::Transporter do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Record
     include GlobalID::Identification
+
     attr_reader :id
     def initialize id
       @id = id

@@ -8,6 +8,7 @@ RSpec.describe Plumbing::Actor do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Counter
     include Plumbing::Actor
+
     async :name, :count, :slow_query, "slowly_increment", "raises_error"
     attr_reader :name, :count
 
@@ -54,6 +55,7 @@ RSpec.describe Plumbing::Actor do
 
   class WhoAmI
     include Plumbing::Actor
+
     async :me_as_actor, :me_as_self
 
     private
@@ -69,6 +71,7 @@ RSpec.describe Plumbing::Actor do
 
   class Actor
     include Plumbing::Actor
+
     async :get_object_id, :get_object
 
     private def get_object_id(record) = record.object_id
@@ -77,6 +80,7 @@ RSpec.describe Plumbing::Actor do
 
   class SafetyCheck
     include Plumbing::Actor
+
     async :called_from_actor_thread?
 
     def initialize tester
@@ -100,6 +104,7 @@ RSpec.describe Plumbing::Actor do
 
   class Tester
     include Plumbing::Actor
+
     async :on_safety_check, :do_safety_check
 
     def initialize
@@ -115,6 +120,7 @@ RSpec.describe Plumbing::Actor do
 
   class ParameterHandler
     include Plumbing::Actor
+
     async :set_values, :args, :params, :block
     attr_reader :args, :params, :block
 
@@ -329,6 +335,7 @@ RSpec.describe Plumbing::Actor do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Record
       include GlobalID::Identification
+
       attr_reader :id
       def initialize id
         @id = id

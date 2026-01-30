@@ -6,6 +6,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Addition
       include Plumbing::Pipeline
+
       perform :addition
 
       private
@@ -23,6 +24,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Sequence
       include Plumbing::Pipeline
+
       perform :first_step
       perform :second_step
       perform :third_step
@@ -51,6 +53,7 @@ RSpec.describe Plumbing::Pipeline do
       # standard:disable Lint/ConstantDefinitionInBlock
       class InnerByName
         include Plumbing::Pipeline
+
         perform :embedded_step
 
         private
@@ -62,6 +65,7 @@ RSpec.describe Plumbing::Pipeline do
 
       class OuterByName
         include Plumbing::Pipeline
+
         perform :first_step
         perform :second_step, using: "InnerByName"
         perform :third_step
@@ -85,6 +89,7 @@ RSpec.describe Plumbing::Pipeline do
       # standard:disable Lint/ConstantDefinitionInBlock
       class InnerByClass
         include Plumbing::Pipeline
+
         perform :embedded_step
 
         private
@@ -96,6 +101,7 @@ RSpec.describe Plumbing::Pipeline do
 
       class OuterByClass
         include Plumbing::Pipeline
+
         perform :first_step
         perform :second_step, using: InnerByClass
         perform :third_step
@@ -120,6 +126,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Passthrough
       include Plumbing::Pipeline
+
       execute :external_operation
 
       private
@@ -138,6 +145,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class PreConditionCheck
       include Plumbing::Pipeline
+
       pre_condition :has_first_key do |input|
         input.key?(:first)
       end
@@ -164,6 +172,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class PreConditionException
       include Plumbing::Pipeline
+
       pre_condition :check_for_danger do |input|
         raise "DANGER - something went wrong"
       end
@@ -185,6 +194,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class Validated
       include Plumbing::Pipeline
+
       validate_with "Validated::Input"
       perform :say_hello
 
@@ -200,7 +210,7 @@ RSpec.describe Plumbing::Pipeline do
           required(:email).filled(:string)
         end
         rule :email do
-          key.failure("must be a valid email") unless /\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i.match? value
+          key.failure("must be a valid email") unless /\A[\w+\-.]+@[a-z\d-]+(\.[a-z\d-]+)*\.[a-z]+\z/i.match? value
         end
       end
     end
@@ -215,6 +225,7 @@ RSpec.describe Plumbing::Pipeline do
     # standard:disable Lint/ConstantDefinitionInBlock
     class PostConditionCheck
       include Plumbing::Pipeline
+
       post_condition :should_be_integer do |result|
         result.instance_of? Integer
       end

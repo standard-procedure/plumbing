@@ -6,6 +6,7 @@ RSpec.shared_examples "an example actor" do |runs_in_background|
   # standard:disable Lint/ConstantDefinitionInBlock
   class Employee
     include Plumbing::Actor
+
     async :name, :job_title, :greet_slowly, :promote
 
     def initialize(name)

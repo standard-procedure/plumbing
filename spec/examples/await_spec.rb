@@ -6,6 +6,7 @@ RSpec.describe "await" do
   # standard:disable Lint/ConstantDefinitionInBlock
   class Person
     include Plumbing::Actor
+
     async :name
     def initialize name
       @name = name
