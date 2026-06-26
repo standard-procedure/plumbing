@@ -14,6 +14,7 @@ end
 
 require_relative "plumbing/version"
 require_relative "plumbing/types"
+require_relative "plumbing/object"
 
 module Kernel
   def Await(&block)
