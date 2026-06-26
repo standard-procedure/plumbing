@@ -8,6 +8,7 @@ RSpec.describe Plumbing::Actor::Rails do
     Class.new do
       attr_reader :wrapped
       def initialize = @wrapped = 0
+
       def wrap
         @wrapped += 1
         yield
@@ -27,6 +28,7 @@ RSpec.describe Plumbing::Actor::Rails do
   let(:greeter) do
     Class.new do
       include Plumbing::Actor
+
       async :greet do
         param :name, String
         returns { |name:| "Hello #{name}" }
@@ -52,7 +54,12 @@ RSpec.describe Plumbing::Actor::Rails do
   it "still processes one actor's messages sequentially, in order" do
     recorder = Class.new do
       include Plumbing::Actor
-      def initialize = (super; @order = [])
+
+      def initialize
+        super
+        @order = []
+      end
+
       async :record do
         param :n, Integer
         returns { |n:| @order << n }

@@ -9,6 +9,7 @@ RSpec.describe Plumbing::Actor::Threaded do
   let(:greeter) do
     Class.new do
       include Plumbing::Actor
+
       async :greet do
         param :name, String
         returns { |name:| "Hello #{name}" }
@@ -31,6 +32,7 @@ RSpec.describe Plumbing::Actor::Threaded do
   it "delivers on a thread other than the caller's" do
     catcher = Class.new do
       include Plumbing::Actor
+
       async(:where) { returns { Thread.current.object_id } }
     end.new
     expect(catcher.where.await).not_to eq(Thread.current.object_id)
@@ -39,7 +41,12 @@ RSpec.describe Plumbing::Actor::Threaded do
   it "processes one actor's messages sequentially, in arrival order" do
     recorder = Class.new do
       include Plumbing::Actor
-      def initialize = (super; @order = [])
+
+      def initialize
+        super
+        @order = []
+      end
+
       async :record do
         param :n, Integer
         returns { |n:| @order << n }
@@ -53,6 +60,7 @@ RSpec.describe Plumbing::Actor::Threaded do
   it "propagates exceptions through await" do
     boom = Class.new do
       include Plumbing::Actor
+
       async(:explode) { returns { raise "boom" } }
     end.new
     expect { boom.explode.await }.to raise_error(RuntimeError, "boom")
@@ -61,6 +69,7 @@ RSpec.describe Plumbing::Actor::Threaded do
   it "tracks current_sender across the thread boundary" do
     inner = Class.new do
       include Plumbing::Actor
+
       async(:who) { returns { current_sender } }
     end.new
     sender = greeter.new

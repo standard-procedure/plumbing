@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "set"
 require_relative "../actor"
 require_relative "../event"
 
@@ -23,7 +22,10 @@ module Plumbing
       # Register an observer (passed as a block). Returns the proc so it can be
       # handed to #remove later.
       async :observe do
-        returns { |&observer| @observers << observer; observer }
+        returns { |&observer|
+          @observers << observer
+          observer
+        }
       end
 
       # Deregister a previously-registered observer proc.

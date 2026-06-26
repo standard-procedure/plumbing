@@ -18,7 +18,12 @@ RSpec.describe "Plumbing::Actor::Async ordering" do
   let(:recorder) do
     Class.new do
       include Plumbing::Actor
-      def initialize = (super; @order = [])
+
+      def initialize
+        super
+        @order = []
+      end
+
       async :record do
         param :n, Integer
         returns do |n:|
