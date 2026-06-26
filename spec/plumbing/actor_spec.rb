@@ -4,10 +4,13 @@ RSpec.describe Plumbing::Actor do
   describe "configuration" do
     after do
       Plumbing::Actor.uses :inline
+      Plumbing::Actor.worker_types.delete(:my_worker)
     end
 
-    it "maintains a registry of workers" do
-      expect(Plumbing::Actor.workers).to eq [:inline]
+    it "always has the inline worker registered" do
+      # Other workers (async/threaded/rails) self-register when required, so the
+      # registry contains whatever has been required — inline is always present.
+      expect(Plumbing::Actor.workers).to include(:inline)
     end
 
     it "allows new workers to be registered" do
@@ -15,7 +18,7 @@ RSpec.describe Plumbing::Actor do
         "FAKE WORKER FOR #{actor}"
       end
 
-      expect(Plumbing::Actor.workers).to eq [:inline, :my_worker]
+      expect(Plumbing::Actor.workers).to include(:my_worker)
     end
 
     it "allows the current type of worker to be set" do

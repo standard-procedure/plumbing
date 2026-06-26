@@ -1,82 +1,65 @@
-require "concurrent/array"
-require "concurrent/mvar"
-require "concurrent/scheduled_task"
-require "concurrent/immutable_struct"
-require "concurrent/promises"
-require_relative "transporter"
+# frozen_string_literal: true
+
+require_relative "worker"
+require_relative "message"
 
 module Plumbing
   module Actor
-    class Threaded
-      def initialize target
-        @target = target
-        @queue = Concurrent::Array.new
-        @mutex = Thread::Mutex.new
+    # Processes an actor's messages on its own dedicated thread, ONE AT A TIME,
+    # IN ARRIVAL ORDER. Concurrency is between actors (each has its own thread
+    # and queue), never within one. Built on core Ruby — no concurrent-ruby.
+    # Arguments are passed by reference; see DESIGN.md `safe_threaded` for the
+    # marshalling / Ractor-safe variant.
+    #
+    # The Worker is a frozen Literal::Data, so mutable state lives in container
+    # objects (a Queue, a Mutex, a one-element Array holding the thread) rather
+    # than reassignable ivars. Closing the queue makes `pop` return nil, which
+    # cleanly stops the consumer.
+    class Threaded < Worker
+      prop :queue, _Any?, default: -> { Thread::Queue.new }
+      prop :lock, _Any?, default: -> { Mutex.new }
+      prop :runner, _Any?, default: -> { [] }
+
+      def call
+        @lock.synchronize { @runner << Thread.new { run_loop } if @runner.empty? }
+        self
+      end
+      alias_method :start, :call
+
+      def stop = @queue.close
+
+      def active? = !@queue.closed?
+
+      def dispatch(message)
+        call
+        @queue.push(message)
       end
 
-      # Send the message to the target and wrap the result
-      def send_message(message_name, *args, **params, &block)
-        Plumbing.config.logger.debug { "-> #{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})\n#{Thread.current.name}" }
-        Message.new(@target, message_name, Plumbing::Actor.transporter.marshal(*args), Plumbing::Actor.transporter.marshal(params).first, block, Concurrent::MVar.new).tap do |message|
-          @queue << message
-          send_messages
-        end
-      end
-
-      def safely(&)
-        Plumbing.config.logger.debug { "-> #{@target.class}#perform_safely\n#{Thread.current.name}" }
-        send_message(:perform_safely, &)
-        nil
-      end
-
-      def in_context? = @mutex.owned?
-
-      def stop = @queue.clear
-
-      protected
-
-      def in_actor_thread &block
-        Concurrent::ScheduledTask.execute(0.1) do
-          @mutex.synchronize(&block)
-        end
-      end
+      def message_class = Plumbing::Actor::Threaded::Message
 
       private
 
-      def send_messages
-        in_context? ? dispatch_messages : in_actor_thread { dispatch_messages }
-      end
-
-      def dispatch_messages
-        while (message = @queue.shift)
-          message.call
+      def run_loop
+        while (message = @queue.pop)
+          message.deliver
         end
       end
 
-      class Message < Concurrent::ImmutableStruct.new(:target, :message_name, :packed_args, :packed_params, :unsafe_block, :result)
-        def call
-          args = Plumbing::Actor.transporter.unmarshal(*packed_args)
-          params = Plumbing::Actor.transporter.unmarshal(packed_params)
-          Plumbing.config.logger.debug { "---> #{target.class}##{message_name}(#{args.first.inspect}, #{params.first.inspect}, &#{!unsafe_block.nil?})\n#{Thread.current.name}" }
-          value = target.send message_name, *args, **params.first, &unsafe_block
-          Plumbing.config.logger.debug { "===> #{target.class}##{message_name} => #{value}\n#{Thread.current.name}" }
+      class Message < Actor::Message
+        prop :ready, _Any?, default: -> { Thread::Queue.new }
 
-          result.put Plumbing::Actor.transporter.marshal(value)
-        rescue => ex
-          Plumbing.config.logger.debug { "!!!! #{target.class}##{message_name} => #{ex}\n#{Thread.current.name}" }
-          result.put ex
+        def deliver
+          super
+        ensure
+          @ready.close # wakes the awaiting thread
         end
 
-        def value
-          value = Plumbing::Actor.transporter.unmarshal(*result.take(Plumbing.config.timeout)).first
-          raise value if value.is_a? Exception
-          value
-        end
+        def _wait_until_ready = @ready.pop # blocks until deliver closes it
       end
-    end
-
-    def self.transporter
-      @transporter ||= Plumbing::Actor::Transporter.new
     end
   end
 end
+
+# Opt-in worker: requiring this file registers it. Select with
+# `Plumbing::Actor.uses :threaded` (no extra gem needed — core Ruby threads).
+Plumbing::Actor.register(:threaded) { |actor| Plumbing::Actor::Threaded.new(actor: actor) }

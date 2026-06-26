@@ -24,7 +24,7 @@ Everything that pulls in a heavier dependency is opt-in: the consumer must
 |---|---|---|
 | `inline` actor worker | — (always loaded, the default) | — |
 | `async` actor worker | `plumbing/actor/async` | `async` |
-| `threaded` actor worker | `plumbing/actor/threaded` | `concurrent-ruby` |
+| `threaded` actor worker | `plumbing/actor/threaded` | — (core Ruby `Thread`/`Queue`) |
 | `rails` actor worker | `plumbing/actor/rails` | `rails` (ActiveSupport) |
 
 This is why `globalid` is dropped from the gemspec — the old `Transporter`
@@ -134,9 +134,18 @@ Plumbing::Actor.register(:custom) { |actor| ... } # plug in your own
 - **`async`** — opt-in; `Async::Queue` + `Semaphore`, `queue.async(parent:)`
   is the loop (no wrapping `while`).
 - **`threaded`** — opt-in; ported from 0.x onto the `Worker` base class
-  (`concurrent-ruby`). Carries the `Transporter` for cross-thread arg
-  marshalling if/where needed.
-- **`rails`** — opt-in; the Rails-safe threaded variant.
+  (`concurrent-ruby`). v1 passes arguments **by reference** (no marshalling);
+  callers follow normal actor hygiene — don't mutate shared objects across the
+  boundary.
+- **`rails`** — opt-in; the Rails-safe threaded variant (wraps work in the
+  ActiveSupport executor).
+
+> **Future: `safe_threaded` / `safe_rails` (and a Ractor worker).** The 0.x
+> `Transporter` (marshalling args via `globalid`) was written with a Ractor
+> implementation in mind — Ractors *enforce* shareability, so arguments must be
+> marshalled. A future opt-in `safe_*` worker family can reintroduce the
+> Transporter (and `globalid` as a worker-only dep) for AR-safe / Ractor-safe
+> argument passing, without burdening the default `threaded`/`rails` workers.
 
 ---
 
