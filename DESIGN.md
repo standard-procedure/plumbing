@@ -97,9 +97,10 @@ class Greeting
 
   async :say do
     param :greeting, String, default: "Hello"
-    # Each `param` is exposed as a local inside the `returns` block — `greeting`
-    # here is the validated argument, used alongside the instance's own @name.
-    returns { "#{greeting} #{@name}" }
+    # Validated params are passed into the `returns` block as keyword parameters
+    # — declare them with `|greeting:|` and they arrive as plain, type-checked
+    # locals, used alongside the instance's own @name.
+    returns { |greeting:| "#{greeting} #{@name}" }
   end
 end
 

@@ -29,7 +29,7 @@ class Greeting
 
   async :say do
     param :greeting, String, default: "Hello"
-    returns { "#{greeting} #{@name}" }
+    returns { |greeting:| "#{greeting} #{@name}" }  # validated params arrive as block kwargs
   end
 end
 
