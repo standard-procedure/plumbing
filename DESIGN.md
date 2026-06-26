@@ -60,13 +60,14 @@ object itself (no narrowing proxy — that behaviour is intentionally dropped):
 ```ruby
 class Object
   def as(interface)
-    Literal.check(self, interface)   # raises on mismatch (verify literal arg order)
+    Literal.check(self, interface)   # check(value, type) — confirmed against literal 1.9.0
     self
   end
 end
 
-Callable   = Literal::Types._Interface(:call)
-Observable = Literal::Types._Interface(:add_observer, :remove_observer)
+# `Callable` already ships with literal as `Literal::Types._Callable` — use it
+# directly, don't redefine. Only `Observable` is ours:
+Observable = Literal::Types._Interface(:observe, :remove, :remove_all)
 ```
 
 Trade-off vs 0.x: callers can still reach non-interface methods afterwards.
@@ -96,6 +97,8 @@ class Greeting
 
   async :say do
     param :greeting, String, default: "Hello"
+    # Each `param` is exposed as a local inside the `returns` block — `greeting`
+    # here is the validated argument, used alongside the instance's own @name.
     returns { "#{greeting} #{@name}" }
   end
 end
@@ -149,20 +152,23 @@ for now.)
 Two registration methods, three lifetimes:
 
 ```ruby
-# SINGLETON — always the same object back.  (alias: register)
-Plumbing.services.singleton :config, AppConfig.load    # eager: object supplied now
-Plumbing.services.singleton(:db) { Database.connect }  # lazy: built once, on first access, cached
+# SINGLETON — always the same object back.  (alias: singleton)
+Plumbing.services.register :config, AppConfig.load    # eager: object supplied now
+Plumbing.services.register(:db) { Database.connect }  # lazy: built once, on first access, cached
 
-# FACTORY — a fresh object every access.  (alias: create)
-Plumbing.services.factory(:clock) { Time.now }
+# FACTORY — a fresh object every access.  (alias: factory)
+Plumbing.services.create(:clock) { Time.now }
 ```
 
-- `singleton(name, object = nil, &builder)` — eager when handed an object,
-  lazy-once when handed a block. Alias: `register`.
-- `factory(name, &builder)` — builds a new instance on every lookup. Alias:
-  `create`.
-- Validation: exactly one of `object` / `builder` for `singleton`; a block is
-  required for `factory`.
+Primary names are `register` / `create` (less computer-sciencey); `singleton` /
+`factory` are aliases for those who prefer the DI terms.
+
+- `register(name, object = nil, &builder)` — eager when handed an object,
+  lazy-once when handed a block. Alias: `singleton`.
+- `create(name, &builder)` — builds a new instance on every lookup. Alias:
+  `factory`.
+- Validation: exactly one of `object` / `builder` for `register`; a block is
+  required for `create`.
 
 Access (synchronous — no `await`, because it's not an actor):
 
@@ -205,12 +211,24 @@ end
 
 #### Debounce / batching
 
-`push` adds the event to an internal queue and triggers a *single*
+`push` adds the event to an internal **ordered queue** and triggers a *single*
 asynchronous `notify_observers` pass. This:
 
-- debounces duplicates (duplicate = value-equal event, via prop-based `hash`)
+- debounces duplicates (duplicate = value-equal event) using a **`Set` as a
+  dedup index**: `@queue << event if @seen.add?(event)`. `Set#add?` returns
+  `nil` when the event is already present, so an equal event enqueues at most
+  once. Events are `Literal::Data` (prop-based `hash`/`eql?`), so value-equality
+  works correctly as Set membership.
 - coalesces a burst of pushes into one async task + one notify pass, rather
   than spawning an async task per event.
+
+The queue itself stays an ordered Array — it preserves emission order, and lets
+`debounce: false` push an intentional duplicate through (the `Set` is *only* the
+fast membership filter for the `debounce: true` path, not the queue itself).
+Each notify pass drains the queue in order, then clears both the queue and the
+Set. (A bare `Set` as the queue is tempting — it auto-dedupes and Ruby Sets keep
+insertion order — but it can't express `debounce: false`, so we keep them
+separate.)
 
 #### Composition algebra
 
@@ -237,8 +255,8 @@ errors.observe { |event| alert(event) }
 
 ## Open implementation details (resolve during build, not blocking)
 
-- Verify `literal`'s `Literal.check` argument order (`check(value, type)` vs
-  `check(type, value)`).
+- ~~Verify `literal`'s `Literal.check` argument order~~ — **resolved:**
+  `Literal.check(value, type)` (positional), confirmed against `literal 1.9.0`.
 - `threaded` worker arg-passing: direct reference vs marshalled `Transporter`
   (and whether `globalid` rides along as a `threaded`-only optional dep).
 - Test helpers: a v1 equivalent of the old `Plumbing::Spec.modes` /

@@ -1,6 +1,7 @@
+# frozen_string_literal: true
+
 module Plumbing
-  Callable = RubberDuck.define :call
-  Observable = RubberDuck.define :add_observer, :remove_observer, :is_observer?
-  DispatchesEvents = RubberDuck.define :add_observer, :remove_observer, :is_observer?, :shutdown, :dispatch
-  Collection = RubberDuck.define :each, :<<, :delete, :include?
+  # A literal-compatible predicate matching any of the given values.
+  # Primary use: as the type passed to a Literal prop (e.g. Message#status).
+  def self.OneOf(*values) = proc { |v| values.include? v }
 end

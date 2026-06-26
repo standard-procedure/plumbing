@@ -20,10 +20,10 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "https://github.com/standard-procedure/plumbing/blob/main/CHANGELOG.md"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    Dir["{lib}/**/*", "Rakefile", "README.md", "LICENSE"]
+    Dir["{lib}/**/*", "Rakefile", "README.md", "DESIGN.md", "PLAN.md", "LICENSE"]
   end
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
-  spec.add_dependency "globalid"
+  spec.add_dependency "literal", "~> 1.9"
 end

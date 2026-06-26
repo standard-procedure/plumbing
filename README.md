@@ -53,9 +53,9 @@ Actors track who called them — `current_sender` (immediate) and
 A lock-free service locator, prefilled at startup.
 
 ```ruby
-Plumbing.services.singleton :config, AppConfig.load    # eager singleton  (alias: register)
-Plumbing.services.singleton(:db) { Database.connect }  # lazy singleton, built once
-Plumbing.services.factory(:clock) { Time.now }         # new instance every access (alias: create)
+Plumbing.services.register :config, AppConfig.load    # eager singleton  (alias: singleton)
+Plumbing.services.register(:db) { Database.connect }  # lazy singleton, built once
+Plumbing.services.create(:clock) { Time.now }         # new instance every access (alias: factory)
 
 Plumbing.services[:db]
 ```

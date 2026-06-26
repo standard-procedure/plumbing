@@ -146,15 +146,15 @@ git commit -m "feat: Awaitable marker and Kernel#Await"
 require "spec_helper"
 
 RSpec.describe "Object#as" do
-  Callable = Literal::Types._Interface(:call) unless defined?(Callable)
+  let(:callable) { Literal::Types._Callable }  # built into literal — don't redefine
 
   it "returns the object itself when it satisfies the interface" do
     duck = ->(x) { x }
-    expect(duck.as(Callable)).to be(duck)
+    expect(duck.as(callable)).to be(duck)
   end
 
   it "raises when the object does not satisfy the interface" do
-    expect { "not callable".as(Callable) }.to raise_error(Literal::TypeError)
+    expect { "not callable".as(callable) }.to raise_error(Literal::TypeError)
   end
 end
 ```
@@ -174,13 +174,13 @@ class Object
   # Validate this object satisfies the given literal interface/type and
   # return self.  No narrowing proxy — validate-and-passthrough.
   def as(interface)
-    Literal.check(expected: interface, actual: self)
+    Literal.check(self, interface)   # confirmed signature: check(value, type)
     self
   end
 end
 ```
 
-> **Build note:** confirm `literal`'s checking API — it may be `Literal.check(actual, expected:)` or `interface === self`. Adjust this one line and the `raise_error` class in the test to match the installed `literal` version.
+> **Build note:** `Literal.check(value, type)` confirmed against `literal 1.9.0` (positional). Still TODO at this step: probe the exact error class it raises on mismatch and set the `raise_error(...)` expectation to match.
 
 - [ ] **Step 4: Run it to verify it passes**
 
@@ -199,10 +199,9 @@ git commit -m "feat: Object#as interface cast (replaces RubberDuck)"
 **Files:**
 - Modify: `lib/plumbing/types.rb` (add `Callable`, `Observable`)
 
-- [ ] **Step 1:** Add to `Plumbing` (in `types.rb`):
+- [ ] **Step 1:** `Callable` already ships with literal as `Literal::Types._Callable` — do **not** redefine it. Add only `Observable` to `Plumbing` (in `types.rb`):
 ```ruby
-  Callable   = Literal::Types._Interface(:call)
-  Observable = Literal::Types._Interface(:observe, :remove)
+  Observable = Literal::Types._Interface(:observe, :remove, :remove_all)
 ```
 - [ ] **Step 2:** Commit: `git commit -am "feat: Callable/Observable interfaces"`
 
@@ -432,32 +431,32 @@ RSpec.describe Plumbing::Services do
 
   it "returns an eagerly-registered singleton object" do
     obj = Object.new
-    services.singleton(:thing, obj)
+    services.register(:thing, obj)
     expect(services[:thing]).to be(obj)
   end
 
   it "builds a lazy singleton once, on first access" do
     calls = 0
-    services.singleton(:db) { calls += 1; Object.new }
+    services.register(:db) { calls += 1; Object.new }
     a = services[:db]
     b = services[:db]
     expect(a).to be(b)
     expect(calls).to eq(1)
   end
 
-  it "builds a fresh object every access for a factory" do
-    services.factory(:clock) { Object.new }
+  it "builds a fresh object every access via create" do
+    services.create(:clock) { Object.new }
     expect(services[:clock]).not_to be(services[:clock])
   end
 
-  it "aliases register->singleton and create->factory" do
-    expect(services.method(:register).original_name).to eq(:singleton)
-    expect(services.method(:create).original_name).to eq(:factory)
+  it "aliases singleton->register and factory->create" do
+    expect(services.method(:singleton).original_name).to eq(:register)
+    expect(services.method(:factory).original_name).to eq(:create)
   end
 
-  it "rejects ambiguous singleton registration" do
-    expect { services.singleton(:x, Object.new) { Object.new } }.to raise_error(ArgumentError)
-    expect { services.singleton(:x) }.to raise_error(ArgumentError)
+  it "rejects ambiguous registration" do
+    expect { services.register(:x, Object.new) { Object.new } }.to raise_error(ArgumentError)
+    expect { services.register(:x) }.to raise_error(ArgumentError)
   end
 
   it "raises a clear error for an unknown service" do
@@ -495,20 +494,20 @@ module Plumbing
     end
 
     # Same object every time.  Eager when given `object`, lazy when given a block.
-    def singleton(name, object = nil, &builder)
+    def register(name, object = nil, &builder)
       raise ArgumentError, "supply exactly one of object/builder" unless object.nil? ^ builder.nil?
       @entries[name.to_sym] = object.nil? ? Singleton.new(builder, nil, false) : Singleton.new(nil, object, true)
       name.to_sym
     end
-    alias_method :register, :singleton
+    alias_method :singleton, :register
 
     # Fresh object on every access.
-    def factory(name, &builder)
-      raise ArgumentError, "factory requires a block" if builder.nil?
+    def create(name, &builder)
+      raise ArgumentError, "create requires a block" if builder.nil?
       @entries[name.to_sym] = builder
       name.to_sym
     end
-    alias_method :create, :factory
+    alias_method :factory, :create
 
     def [](name)
       entry = @entries.fetch(name.to_sym)
@@ -531,7 +530,7 @@ Expected: PASS.
 
 ```bash
 git add lib/plumbing/services.rb lib/plumbing.rb spec/plumbing/services_spec.rb
-git commit -m "feat: lock-free service locator (singleton/factory + register/create)"
+git commit -m "feat: lock-free service locator (register/create + singleton/factory aliases)"
 ```
 
 ---
@@ -642,7 +641,7 @@ module Plumbing
     class Base
       include Plumbing::Actor
 
-      def initialize = (@observers = []; @queue = [])
+      def initialize = (@observers = []; @queue = []; @seen = Set.new)
 
       async :observe do
         param :observer, Proc
@@ -662,7 +661,11 @@ module Plumbing
         param :event, Plumbing::Event           # _Descendant(Plumbing::Event) — refine to the literal type
         param :debounce, _Boolean, default: true
         returns do
-          @queue.push(event) unless debounce && @queue.include?(event)
+          if debounce
+            @queue << event if @seen.add?(event)  # Set#add? => nil if already queued
+          else
+            @queue << event                       # forced through, even if a dup
+          end
           await { send(:notify_observers, sender: self) }
           event
         end
@@ -672,6 +675,7 @@ module Plumbing
         returns do
           batch = @queue
           @queue = []
+          @seen.clear
           batch.each { |event| @observers.each { |observer| observer.call(event) } }
         end
       end
@@ -680,7 +684,7 @@ module Plumbing
 end
 ```
 
-> Build notes: (1) tighten `param :event` to the literal descendant type once the `as`/types API is confirmed; (2) the debounce key is event value-equality (`@queue.include?` uses `==`); for large bursts switch the queue to a `Set` for O(1) membership (Event hashes on props); (3) `push` triggers a single async `notify_observers` pass so a burst coalesces into one drain.
+> Build notes: (1) tighten `param :event` to the literal descendant type once the `as`/types API is confirmed; (2) debounce uses a `Set` (`@seen`) as an O(1) dedup index via `Set#add?`, while the ordered `@queue` Array preserves emission order and lets `debounce: false` push an intentional dup through — `require "set"` at the top (core in Ruby 4, but keep the require for the gem's `>= 3.2` floor); (3) `push` triggers a single async `notify_observers` pass so a burst coalesces into one drain.
 
 `lib/plumbing/pipeline/source.rb`:
 ```ruby
