@@ -1,52 +1,47 @@
+# frozen_string_literal: true
+
 require "async"
-require "async/semaphore"
-require "timeout"
+require "async/semaphore" # not autoloaded by `require "async"` on async < ~2.39
+require_relative "worker"
+require_relative "message"
 
 module Plumbing
   module Actor
-    class Async
-      attr_reader :target
+    class Async < Worker
+      prop :queue, ::Async::Queue, default: -> { ::Async::Queue.new }
+      prop :active, _Boolean, default: true
+      prop :limit, _Integer(1..64), default: 8
+      prop :timeout, _Integer(0..3600), default: 30
 
-      def initialize target
-        @target = target
-        @semaphore = ::Async::Semaphore.new(Plumbing.config.max_concurrency)
-      end
-
-      # Send the message to the target and wrap the result
-      def send_message(message_name, *args, **params, &block)
-        Plumbing.config.logger.debug { "-> #{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})" }
-        task = @semaphore.async do
-          Plumbing.config.logger.debug { "---> #{@target.class}##{message_name}(#{args.inspect}, #{params.inspect})" }
-          @target.send(message_name, *args, **params, &block)
-        end
-        sleep 0.01
-        Result.new(task)
-      end
-
-      def safely(&)
-        Plumbing.config.logger.debug { "-> #{@target.class}#perform_safely" }
-        send_message(:perform_safely, &)
-        sleep 0.01
-        nil
-      end
-
-      def in_context? = true
-
-      def stop = nil
-
-      Result = Data.define(:task) do
-        def value
-          sleep 0.01
-          Timeout.timeout(Plumbing::Actor.timeout) do
-            task.wait
-          end
+      def call
+        Kernel.Async(transient: true) do |loop|
+          semaphore = ::Async::Semaphore.new(@limit, parent: loop)
+          @queue.async(parent: semaphore) { |_task, message| message.deliver }
         end
       end
-      private_constant :Result
-    end
 
-    def self.timeout
-      Plumbing.config.timeout
+      def stop
+        @active = false
+        @queue.close
+      end
+
+      def active? = @active
+
+      def dispatch(message) = @queue.push(message)
+
+      def message_class = Plumbing::Actor::Async::Message
+
+      class Message < Actor::Message
+        prop :timeout, _Integer(0..3600), default: -> { @actor.worker.timeout }
+
+        def _wait_until_ready
+          sleep 0.001 while @status == :waiting
+        end
+      end
     end
   end
 end
+
+# Opt-in worker: requiring this file registers it. Select with
+# `Plumbing::Actor.uses :async` (the app must also depend on the `async` gem).
+Plumbing::Actor.register(:async) { |actor| Plumbing::Actor::Async.new(actor: actor) }
