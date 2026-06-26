@@ -1,63 +1,113 @@
 # Plumbing
 
-Actors, Observers and Data Pipelines.
+Small, fast building blocks for concurrent Ruby: **actors**, a **service
+locator** and a **composable event stream** — built on
+[`literal`](https://github.com/joeldrapper/literal) and nothing else.
 
-## Usage
+> **v1 is a breaking rewrite** (`0.5.2 → 1.0.0`), in progress on the `v1`
+> branch. See [DESIGN.md](DESIGN.md) for the full specification and
+> [PLAN.md](PLAN.md) for the build order.
 
-Start off by [configuring Plumbing](/docs/config.md) and selecting your `mode`.
+## Philosophy
 
-## Pipelines
+Plumbing gives you the few concurrency patterns an app actually needs without
+the surface area of the `dry-*` family. The core gem's **only runtime
+dependency is `literal`**. Anything heavier is opt-in — you `require` it and
+add the underlying gem yourself.
 
-[Data transformations](/docs/pipelines.md) similar to unix pipes.
+## Concepts
 
-## Actors
+### Actors
 
-[Asynchronous, thread-safe, objects](/docs/actors.md).
+Asynchronous, thread-safe objects. `include Plumbing::Actor`, declare typed
+async messages, and resolve results with `await`.
 
-## Pipes
+```ruby
+class Greeting
+  include Plumbing::Actor
+  def initialize(name:) = @name = name
 
-[Composable observers](/docs/pipes.md).
+  async :say do
+    param :greeting, String, default: "Hello"
+    returns { "#{greeting} #{@name}" }
+  end
+end
 
-## Rubber ducks
+g = Greeting.new(name: "Alice")
+await { g.say(greeting: "Hi") }   # => "Hi Alice"
+```
 
-[Type-safety the ruby way](/docs/rubber_ducks.md).
+Each actor owns a pluggable **worker**. `inline` (the default) ships with the
+core; `async`, `threaded` and `rails` are opt-in:
+
+```ruby
+require "plumbing/actor/async"   # also: add `async` to your Gemfile
+Plumbing::Actor.uses :async
+```
+
+Actors track who called them — `current_sender` (immediate) and
+`current_senders` (the full call-chain).
+
+### Services
+
+A lock-free service locator, prefilled at startup.
+
+```ruby
+Plumbing.services.singleton :config, AppConfig.load    # eager singleton  (alias: register)
+Plumbing.services.singleton(:db) { Database.connect }  # lazy singleton, built once
+Plumbing.services.factory(:clock) { Time.now }         # new instance every access (alias: create)
+
+Plumbing.services[:db]
+```
+
+Use the global `Plumbing.services`, or build and manage your own registry
+instances independently.
+
+### Pipeline + Event
+
+A composable, concurrency-safe event stream over immutable `Literal::Data`
+events.
+
+```ruby
+class SomethingHappened < Plumbing::Event
+  prop :id, String
+end
+
+errors = Pipeline::Only.new(
+  source: Pipeline::Junction.new(app_events, worker_events),
+  filters: ["Error*", "Critical*"],
+)
+errors.observe { |event| alert(event) }
+
+app_events << SomethingHappened.new(id: "123")
+```
+
+Compose with `Source`, `Only`, `Except`, `Filter` (regexp) and `Junction`
+(fan-in). Pushes are debounced and batched into a single notify pass.
 
 ## Installation
-
-Note: this gem is licensed under the [LGPL](/LICENCE).  This may or may not make it unsuitable for use by you or your company.
-
-Install the gem and add to the application's Gemfile by executing:
 
 ```sh
 bundle add standard-procedure-plumbing
 ```
 
-Then:
-
 ```ruby
-require 'plumbing'
-
-# Set the mode for your Actors and Pipes
-Plumbing.config mode: :async
+require "plumbing"
 ```
+
+Note: this gem is licensed under the [LGPL](/LICENCE), which may or may not
+make it unsuitable for use by you or your company.
 
 ## Development
 
-### To Do
+After checking out the repo, run `bin/setup` to install dependencies, then
+`rake spec` to run the tests. `bin/console` gives you an interactive prompt.
 
-- [ ] Add a debouncing filter for pipes
-- [ ] Pass the mode as a block parameter in `Plumbing::Spec.modes`
-- [ ] Move Plumbing::Actor::Transporter to Plumbing::Transporter ?? (planning to use it outside of Plumbing so would make sense not to imply it is tied to Actors)
-- [X] Ensure transporters deal with GlobalID models not being found / errors when unpacking
-
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install locally, run `bundle exec rake install`. To release, update the
+version in `lib/plumbing/version.rb` and run `bundle exec rake release`.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at <https://github.com/standard_procedure/plumbing>. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/standard_procedure/plumbing/blob/main/CODE_OF_CONDUCT.md).
-
-## Code of Conduct
-
-Everyone interacting in the Plumbing project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/standard_procedure/plumbing/blob/main/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at
+<https://github.com/standard-procedure/plumbing>. This project follows a
+[code of conduct](https://github.com/standard-procedure/plumbing/blob/main/CODE_OF_CONDUCT.md).
