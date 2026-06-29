@@ -24,3 +24,27 @@ RSpec.describe "Plumbing::Operations data types" do
     expect { Plumbing::Operations::State.new(name: :x, kind: :nonsense) }.to raise_error(StandardError)
   end
 end
+
+RSpec.describe "Plumbing::Operations attributes" do
+  let(:task_class) do
+    Class.new(Plumbing::Operations::Task) do
+      attribute :count, Integer
+      attribute :note, _Nilable(String)
+    end
+  end
+
+  it "type-validates and exposes attributes through accessors" do
+    op = task_class.new
+    op.send(:setup_attributes, {count: 3})
+    expect(op.count).to eq 3
+    expect(op.note).to be_nil
+    op.count = 5
+    expect(op.count).to eq 5
+    expect(op.attributes).to eq({count: 5, note: nil})
+  end
+
+  it "raises when a required attribute is missing or mistyped" do
+    op = task_class.new
+    expect { op.send(:setup_attributes, {count: "not-an-int"}) }.to raise_error(StandardError)
+  end
+end
