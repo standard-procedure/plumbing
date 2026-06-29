@@ -48,3 +48,44 @@ RSpec.describe "Plumbing::Operations attributes" do
     expect { op.send(:setup_attributes, {count: "not-an-int"}) }.to raise_error(StandardError)
   end
 end
+
+RSpec.describe "Plumbing::Operations state DSL" do
+  let(:task_class) do
+    Class.new(Plumbing::Operations::Task) do
+      attribute :n, Integer
+      starts_with :check
+      decision :check do
+        go_to :double, "positive", if: -> { n > 0 }
+        go_to :zero, "non-positive"
+      end
+      action(:double) { self.n = n * 2 }.then :done
+      result :done
+      result :zero
+    end
+  end
+
+  it "records the start state" do
+    expect(task_class.start_state).to eq :check
+  end
+
+  it "builds a decision with ordered, labelled transitions" do
+    check = task_class.states.fetch(:check)
+    expect(check.kind).to eq :decision
+    expect(check.transitions.map(&:target)).to eq [:double, :zero]
+    expect(check.transitions.map(&:label)).to eq ["positive", "non-positive"]
+    expect(check.transitions.first.guard).to be_a(Proc)
+    expect(check.transitions.last.guard).to be_nil
+  end
+
+  it "builds an action with a single then-transition" do
+    double = task_class.states.fetch(:double)
+    expect(double.kind).to eq :action
+    expect(double.action).to be_a(Proc)
+    expect(double.transitions.map(&:target)).to eq [:done]
+  end
+
+  it "builds result states with no transitions" do
+    expect(task_class.states.fetch(:done).kind).to eq :result
+    expect(task_class.states.fetch(:done).transitions).to eq []
+  end
+end
