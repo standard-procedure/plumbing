@@ -17,12 +17,14 @@ module Plumbing
         super()
         @pipeline = pipeline
         @status = :pending
+        @wait_generation = 0
       end
 
       def attributes = @attributes.to_h
 
       async :advance do
-        returns { run_loop }
+        param :poll_token, _Nilable(Integer), default: nil
+        returns { |poll_token:| run_loop unless stale_poll?(poll_token) }
       end
 
       attr_reader :current_state
@@ -45,6 +47,7 @@ module Plumbing
         setup_attributes(attrs)
         @current_state = self.class.start_state
         enter_running
+        worker.call
         advance
       end
 
@@ -52,6 +55,7 @@ module Plumbing
         setup_attributes(attrs)
         @current_state = state
         enter_running
+        worker.call
         advance
       end
 
@@ -76,10 +80,24 @@ module Plumbing
             transition = state.transitions.find { |t| t.matches?(self) }
             raise NoDecision, "no condition matched in :#{state.name}" if transition.nil?
             move_to(transition)
+          when :wait
+            enter_wait(state) unless @waiting_state == state.name
+            transition = state.transitions.find { |t| t.matches?(self) }
+            if transition
+              leave_wait
+              move_to(transition)
+            elsif timed_out?(state)
+              leave_wait
+              raise Timeout, "wait :#{state.name} exceeded #{state.wait_options.timeout}s"
+            else
+              reschedule_poll(state)
+              break
+            end
           end
           break unless @status == :running
         end
       rescue => ex
+        leave_wait
         @status = :failed
         @exception = ex
         emit Failed.new(operation_id: object_id, state: @current_state, exception: ex, attributes: attributes)
@@ -89,6 +107,36 @@ module Plumbing
         from = @current_state
         @current_state = transition.target
         emit Transitioned.new(operation_id: object_id, from: from, to: @current_state, via: transition.label, attributes: attributes)
+      end
+
+      def stale_poll?(token) = !token.nil? && token != @wait_generation
+
+      def monotonic = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      def enter_wait(state)
+        @waiting_state = state.name
+        @wait_generation += 1
+        @wait_started_at = monotonic - (@restored_wait_elapsed || 0.0)
+        @restored_wait_elapsed = nil
+        @timeout_id = after(state.wait_options.timeout, call: :advance, poll_token: @wait_generation)
+        emit Waiting.new(operation_id: object_id, state: state.name, attributes: attributes)
+      end
+
+      def reschedule_poll(state)
+        cancel_deferred(@poll_id) if @poll_id
+        @poll_id = after(state.wait_options.delay, call: :advance, poll_token: @wait_generation)
+      end
+
+      def timed_out?(state)
+        return false if @wait_started_at.nil?
+        (monotonic - @wait_started_at) >= state.wait_options.timeout
+      end
+
+      def leave_wait
+        cancel_deferred(@poll_id) if @poll_id
+        cancel_deferred(@timeout_id) if @timeout_id
+        @wait_generation += 1
+        @poll_id = @timeout_id = @waiting_state = @wait_started_at = nil
       end
 
       def emit(event) = @pipeline&.push(event: event)

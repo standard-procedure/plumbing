@@ -44,3 +44,78 @@ RSpec.describe "Plumbing::Operations wait DSL" do
     expect(Plumbing::Operations::Waiting.new(operation_id: 1, state: :await_ready, attributes: {}).state).to eq :await_ready
   end
 end
+
+RSpec.describe "Plumbing::Operations wait runtime" do
+  before do
+    Plumbing::Actor.register(:async) { |actor| Plumbing::Actor::Async.new(actor: actor) }
+    Plumbing::Actor.uses :async
+  end
+
+  after do
+    Plumbing::Actor.uses :inline
+    Plumbing::Actor.worker_types.delete(:async)
+  end
+
+  let(:gate) { Struct.new(:open).new(false) }
+
+  let(:poll_waiter) do
+    Class.new(Plumbing::Operations::Task) do
+      attribute :gate, _Any?
+      delay 0.03
+      timeout 5.0
+      starts_with :await_gate
+      wait_until :await_gate do
+        go_to :done, "gate open", if: -> { gate.open }
+      end
+      result :done
+    end
+  end
+
+  it "stays in the wait until an external change satisfies the guard at the next poll" do
+    Sync do |task|
+      op = poll_waiter.call(gate: gate)
+      task.sleep 0.02
+      expect(op.current_state).to eq :await_gate
+      expect(op).not_to be_completed
+      gate.open = true
+      task.sleep 0.1
+      expect(op).to be_completed
+      expect(op.current_state).to eq :done
+    end
+  end
+
+  it "fails with Timeout when the guard never satisfies" do
+    short = Class.new(Plumbing::Operations::Task) do
+      attribute :gate, _Any?
+      delay 0.02
+      timeout 0.05
+      starts_with :forever
+      wait_until :forever do
+        go_to :done, "never", if: -> { false }
+      end
+      result :done
+    end
+    Sync do |task|
+      op = short.call(gate: gate)
+      task.sleep 0.3
+      expect(op).to be_failed
+      expect(op.exception).to be_a(Plumbing::Operations::Timeout)
+    end
+  end
+end
+
+RSpec.describe "Plumbing::Operations wait under the inline worker" do
+  before { Plumbing::Actor.uses :inline }
+
+  it "raises NotSupported up front" do
+    klass = Class.new(Plumbing::Operations::Task) do
+      attribute :gate, _Any?
+      starts_with :await_gate
+      wait_until :await_gate do
+        go_to :done, "open", if: -> { gate.open }
+      end
+      result :done
+    end
+    expect { klass.call(gate: Struct.new(:open).new(false)) }.to raise_error(Plumbing::Actor::NotSupported)
+  end
+end

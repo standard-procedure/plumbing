@@ -62,11 +62,21 @@ module Plumbing
       end
 
       def call(pipeline: nil, **attrs)
+        ensure_worker_supports_waits!
         new(pipeline: pipeline).tap { |op| op.__send__(:start, attrs) }
       end
 
       def test(state, pipeline: nil, **attrs)
+        ensure_worker_supports_waits!
         new(pipeline: pipeline).tap { |op| op.__send__(:start_at, state.to_sym, attrs) }
+      end
+
+      def has_waits? = states.each_value.any? { |state| state.kind == :wait }
+
+      def ensure_worker_supports_waits!
+        return unless has_waits?
+        return unless Plumbing::Actor.selected_worker_type == :inline
+        raise Plumbing::Actor::NotSupported, "#{name || "operation"} has wait states; select a non-inline worker with Plumbing::Actor.uses :async (or :threaded)"
       end
     end
 
