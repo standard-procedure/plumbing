@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "dsl"
+require_relative "mermaid"
 
 module Plumbing
   module Operations
@@ -10,6 +11,7 @@ module Plumbing
       include Plumbing::Actor
       extend Literal::Types
       extend DSL
+      extend Mermaid
 
       def initialize(pipeline: nil)
         super()
