@@ -210,9 +210,9 @@ covered by a **small generation token** carried on the poll: `_advance` ignores 
 token is no longer current. Net: one live poll per wait; stale fires self-cancel.
 
 This makes the operation **worker-agnostic**: it never names `Async`. Wait-bearing
-operations simply require a worker whose `after` is supported (async, threaded, or a future
-durable one); declaring `wait_until` on an inline operation raises a clear configuration
-error.
+operations simply require the globally-selected worker to support `after` (async, threaded,
+or a future durable one); under the inline worker a wait surfaces
+`Plumbing::Actor::NotSupported`.
 
 ### Interactions
 
@@ -364,9 +364,13 @@ lib/plumbing/operations/mermaid.rb     # to_mermaid renderer
 
 - **Base class name.** `Plumbing::Operations::Task` (mirrors the old gem, eases migration)
   vs `Plumbing::Operation` singular. Current choice: `Plumbing::Operations::Task`.
-- **Worker default for wait-bearing operations.** Require an explicit `uses :async`/
-  `:threaded` and raise if a `wait_until` is declared on an inline operation (current
-  choice), vs implicitly switching the worker.
+- **Worker selection is global by design.** `Plumbing::Actor.uses` sets one worker type for
+  the whole process at startup, and that is correct: a Rails app must use the threaded
+  (rails) worker or threads clash, and a fibre-based async worker can starve the DB
+  connection pool unless the whole app is fibre-aware. Operations therefore do **not** choose
+  a worker. A wait-bearing operation requires the global worker to support deferral; running
+  one under the inline worker surfaces `Plumbing::Actor::NotSupported` the first time it
+  waits (Plan 2 may add an explicit early guard for a clearer message).
 - **Durable deferral via the rails worker.** `after` on a future rails worker backed by
   `ActiveJob.set(wait:)` would survive restarts — revisit alongside Spec 3.
 - **Sub-tasks** (the gem's `start`/`sub_tasks` associations) — out of Spec 1; likely
