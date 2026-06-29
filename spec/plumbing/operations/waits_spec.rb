@@ -102,6 +102,44 @@ RSpec.describe "Plumbing::Operations wait runtime" do
       expect(op.exception).to be_a(Plumbing::Operations::Timeout)
     end
   end
+
+  let(:registration) do
+    Class.new(Plumbing::Operations::Task) do
+      attribute :name, _Nilable(String)
+      delay 0.05
+      timeout 5.0
+      starts_with :await_name
+      wait_until :await_name do
+        go_to :greet, "named", if: -> { !name.nil? }
+      end
+      action(:greet) { self.name = "Hello #{name}" }.then :done
+      result :done
+      interaction(:provide_name) { |value| self.name = value }.when :await_name
+    end
+  end
+
+  it "wakes a waiting operation immediately via an interaction" do
+    Sync do |task|
+      op = registration.call
+      task.sleep 0.02
+      expect(op.current_state).to eq :await_name
+      op.provide_name("Cher")
+      task.sleep 0.02
+      expect(op).to be_completed
+      expect(op.name).to eq "Hello Cher"
+    end
+  end
+
+  it "raises InvalidState when an interaction is called in the wrong state" do
+    Sync do |task|
+      op = registration.call
+      task.sleep 0.02
+      op.provide_name("Cher")
+      task.sleep 0.02
+      expect(op).to be_completed
+      expect { op.provide_name("Dionne").await }.to raise_error(Plumbing::Operations::InvalidState)
+    end
+  end
 end
 
 RSpec.describe "Plumbing::Operations wait under the inline worker" do

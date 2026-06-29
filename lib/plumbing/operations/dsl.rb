@@ -78,6 +78,22 @@ module Plumbing
         return unless Plumbing::Actor.selected_worker_type == :inline
         raise Plumbing::Actor::NotSupported, "#{name || "operation"} has wait states; select a non-inline worker with Plumbing::Actor.uses :async (or :threaded)"
       end
+
+      def interaction_states = @interaction_states ||= {}
+
+      def interaction(name, &body)
+        name = name.to_sym
+        define_method(name) do |*args, **kwargs|
+          worker.post(name, args: args, kwargs: kwargs)
+        end
+        define_method(:"_#{name}") do |args:, kwargs:|
+          expected = self.class.interaction_states[name]
+          raise Plumbing::Operations::InvalidState, "##{name} cannot run in state #{@current_state.inspect}" unless @current_state == expected
+          instance_exec(*args, **kwargs, &body)
+          run_loop
+        end
+        InteractionBuilder.new(self, name)
+      end
     end
 
     # Returned by `action` so `.then` can set its single transition.
@@ -102,6 +118,20 @@ module Plumbing
 
       def go_to(target, label = nil, **opts)
         @transitions << Transition.new(target: target.to_sym, guard: opts[:if], label: label)
+      end
+    end
+
+    # Returned by `interaction` so `.when` can record the state the interaction
+    # is valid in.
+    class InteractionBuilder
+      def initialize(klass, name)
+        @klass = klass
+        @name = name
+      end
+
+      def when(state)
+        @klass.interaction_states[@name] = state.to_sym
+        @name
       end
     end
   end
