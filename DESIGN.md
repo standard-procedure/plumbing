@@ -167,24 +167,59 @@ Plumbing.services.register :config, AppConfig.load    # eager: object supplied n
 Plumbing.services.register(:db) { Database.connect }  # lazy: built once, on first access, cached
 
 # FACTORY — a fresh object every access.  (alias: factory)
-Plumbing.services.create(:clock) { Time.now }
+Plumbing.services.provide(:clock) { Time.now }
 ```
 
-Primary names are `register` / `create` (less computer-sciencey); `singleton` /
+Primary names are `register` / `provide` (less computer-sciencey); `singleton` /
 `factory` are aliases for those who prefer the DI terms.
 
 - `register(name, object = nil, &builder)` — eager when handed an object,
   lazy-once when handed a block. Alias: `singleton`.
-- `create(name, &builder)` — builds a new instance on every lookup. Alias:
+- `provide(name, &builder)` — builds a new instance on every lookup. Alias:
   `factory`.
 - Validation: exactly one of `object` / `builder` for `register`; a block is
-  required for `create`.
+  required for `provide`.
 
 Access (synchronous — no `await`, because it's not an actor):
 
 ```ruby
 Plumbing.services[:db]
 ```
+
+#### Path routing (added post-v1)
+
+A name containing `/` is a **route**, not a flat key. The locator becomes a
+small Roda-style router: static segments match literally; `:name` segments
+capture a value, bound to the block's keyword of the same name.
+
+```ruby
+# FACTORY route — re-runs the block each access (fits live queries)
+Plumbing.services.provide("people/:id/addresses") { |id:| Person.find(id).addresses }
+Plumbing.services["/people/123/addresses"]
+
+# SINGLETON route — one cached instance per *concrete* path (e.g. one live
+# actor per entity — the HubSystem addressing case)
+Plumbing.services.register("people/:id") { |id:| PersonActor.spawn(id) }
+Plumbing.services["/people/123"]   # same object each call; /people/456 is separate
+```
+
+Design decisions:
+
+- **Keyword binding, not a `params` object.** `:id` in the path binds to `id:`
+  in the block by *name*, so multi-param routes (`orgs/:org_id/people/:id`) are
+  order-independent, and a path/block mismatch fails fast. No `instance_exec`,
+  so the block's `self` is never rebound. The router calls `block.call(**captured)`.
+- **Static beats parameter** at the same position (`people/me` over
+  `people/:id`), regardless of registration order — chosen so boot-order of
+  registrations can't change resolution. Ties resolve to earliest registration.
+- **The lock-free guarantee, qualified.** Flat keys and `provide` routes never
+  write after boot, so they stay lock-free. A *parameterised* `register` route
+  must cache per concrete path, and that cache is written at read time — so it
+  (and only it) is guarded by a `Mutex`. This is the one deliberate exception to
+  the immutable-after-boot rule, accepted because per-entity singletons (actors,
+  per-tenant pools) are worth it.
+- Leading/trailing slashes on both pattern and query are optional/normalised.
+  Lookups with no match raise `KeyError`, as before.
 
 ---
 

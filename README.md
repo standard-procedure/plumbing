@@ -50,15 +50,33 @@ Actors track who called them — `current_sender` (immediate) and
 
 ### Services
 
-A lock-free service locator, prefilled at startup.
+A lock-free service locator that doubles as a path router.
 
 ```ruby
 Plumbing.services.register :config, AppConfig.load    # eager singleton  (alias: singleton)
 Plumbing.services.register(:db) { Database.connect }  # lazy singleton, built once
-Plumbing.services.create(:clock) { Time.now }         # new instance every access (alias: factory)
+Plumbing.services.provide(:clock) { Time.now }        # new instance every access (alias: factory)
 
 Plumbing.services[:db]
 ```
+
+Names containing `/` are **routes**. Static segments match literally; `:name`
+segments capture a value bound to the block's keyword of the same name.
+
+```ruby
+# fresh every access — re-runs the block
+Plumbing.services.provide("people/:id/addresses") { |id:| Person.find(id).addresses }
+Plumbing.services["/people/123/addresses"]   # => the addresses
+
+# singleton per concrete path — one cached object per id
+Plumbing.services.register("people/:id") { |id:| PersonActor.spawn(id) }
+Plumbing.services["/people/123"]              # => the same actor each call
+```
+
+A static segment beats a parameter at the same position, so `people/me` wins
+over `people/:id` regardless of registration order. Leading/trailing slashes are
+optional. `register` routes cache one instance per concrete path (the only
+read-time write, guarded by a mutex); everything else stays lock-free.
 
 Use the global `Plumbing.services`, or build and manage your own registry
 instances independently.
