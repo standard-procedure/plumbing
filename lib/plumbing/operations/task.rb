@@ -59,6 +59,15 @@ module Plumbing
         advance
       end
 
+      def resume(state, attrs, wait_elapsed)
+        setup_attributes(attrs)
+        @current_state = state
+        @status = :running
+        @restored_wait_elapsed = wait_elapsed
+        worker.call
+        advance
+      end
+
       def enter_running
         @status = :running
         emit Started.new(operation_id: object_id, state: @current_state, attributes: attributes)

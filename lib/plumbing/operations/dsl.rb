@@ -79,6 +79,11 @@ module Plumbing
         raise Plumbing::Actor::NotSupported, "#{name || "operation"} has wait states; select a non-inline worker with Plumbing::Actor.uses :async (or :threaded)"
       end
 
+      def restore(state:, pipeline: nil, wait_elapsed: 0.0, **attrs)
+        ensure_worker_supports_waits!
+        new(pipeline: pipeline).tap { |op| op.__send__(:resume, state.to_sym, attrs, wait_elapsed.to_f) }
+      end
+
       def interaction_states = @interaction_states ||= {}
 
       def interaction(name, &body)

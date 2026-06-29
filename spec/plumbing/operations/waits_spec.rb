@@ -140,6 +140,18 @@ RSpec.describe "Plumbing::Operations wait runtime" do
       expect { op.provide_name("Dionne").await }.to raise_error(Plumbing::Operations::InvalidState)
     end
   end
+
+  it "restores an operation into a wait and resumes it" do
+    Sync do |task|
+      op = poll_waiter.restore(state: :await_gate, gate: gate, wait_elapsed: 1.0)
+      task.sleep 0.02
+      expect(op.current_state).to eq :await_gate
+      expect(op).not_to be_completed
+      gate.open = true
+      task.sleep 0.1
+      expect(op).to be_completed
+    end
+  end
 end
 
 RSpec.describe "Plumbing::Operations wait under the inline worker" do
