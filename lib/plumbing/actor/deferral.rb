@@ -3,8 +3,10 @@
 module Plumbing
   module Actor
     # An opaque handle for a scheduled (deferred) message. Cancelling sets a
-    # flag that the worker's timer checks before dispatching, so a timer that
-    # fires concurrently with a cancel simply does nothing (race-safe).
+    # mutex-guarded flag that the worker's timer checks before dispatching. The
+    # flag itself is race-safe; a cancel landing in the tiny window after the
+    # check still lets one (benign, in-order) message through — the operation
+    # layer's generation token discards such a stale fire.
     class Deferral
       def initialize
         @lock = Mutex.new
