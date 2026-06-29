@@ -35,6 +35,17 @@ module Plumbing
         @queue.push(message)
       end
 
+      def after(delay, method:, sender: nil, params: {}, block: nil)
+        call
+        message = build_message(method: method, sender: sender, params: params, block: block)
+        deferral = Plumbing::Actor::Deferral.new
+        Thread.new do
+          sleep delay
+          dispatch(message) unless deferral.cancelled?
+        end
+        deferral
+      end
+
       def message_class = Plumbing::Actor::Threaded::Message
 
       private

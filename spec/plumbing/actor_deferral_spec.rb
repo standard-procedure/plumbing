@@ -32,8 +32,14 @@ RSpec.describe "Actor deferral" do
   end
 
   describe "async worker" do
-    before { Plumbing::Actor.uses :async }
-    after { Plumbing::Actor.uses :inline }
+    before do
+      Plumbing::Actor.register(:async) { |actor| Plumbing::Actor::Async.new(actor: actor) }
+      Plumbing::Actor.uses :async
+    end
+    after do
+      Plumbing::Actor.uses :inline
+      Plumbing::Actor.worker_types.delete(:async)
+    end
 
     let(:counter_class) do
       Class.new do
@@ -63,6 +69,35 @@ RSpec.describe "Actor deferral" do
         task.sleep 0.15
         expect(counter.count.await).to eq 0
       end
+    end
+  end
+
+  describe "threaded worker" do
+    before { Plumbing::Actor.uses :threaded }
+    after { Plumbing::Actor.uses :inline }
+
+    let(:counter_class) do
+      Class.new do
+        include Plumbing::Actor
+
+        async(:tick) { returns { @count = (@count || 0) + 1 } }
+        async(:count) { returns { @count || 0 } }
+      end
+    end
+
+    it "delivers a deferred message after the delay" do
+      counter = counter_class.new
+      counter.after(0.05, call: :tick)
+      sleep 0.2
+      expect(counter.count.await).to eq 1
+    end
+
+    it "does not deliver a cancelled deferred message" do
+      counter = counter_class.new
+      deferral = counter.after(0.05, call: :tick)
+      counter.cancel_deferred(deferral)
+      sleep 0.2
+      expect(counter.count.await).to eq 0
     end
   end
 end
