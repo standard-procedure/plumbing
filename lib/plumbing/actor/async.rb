@@ -33,6 +33,16 @@ module Plumbing
 
       def dispatch(message) = @queue.enqueue(message)
 
+      def after(delay, method:, sender: nil, params: {}, block: nil)
+        message = build_message(method: method, sender: sender, params: params, block: block)
+        deferral = Plumbing::Actor::Deferral.new
+        Kernel.Async(transient: true) do |task|
+          task.sleep delay
+          dispatch(message) unless deferral.cancelled?
+        end
+        deferral
+      end
+
       def message_class = Plumbing::Actor::Async::Message
 
       class Message < Actor::Message
