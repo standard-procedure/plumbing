@@ -8,6 +8,8 @@ module Plumbing
       def call = nil
       def stop = nil
 
+      def after(*, **) = raise Plumbing::Actor::NotSupported, "the inline worker cannot defer messages; use :async or :threaded"
+
       def dispatch message
         message.deliver
       end

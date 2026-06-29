@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "message"
+require_relative "deferral"
 
 module Plumbing
   module Actor
@@ -19,6 +20,13 @@ module Plumbing
           dispatch message
         end
       end
+
+      # Deliver `method` to this actor after `delay` seconds. Returns a Deferral
+      # handle. Base raises; each worker implements its own timer.
+      def after(delay, method:, sender: nil, params: {}, block: nil) = raise NotImplementedError
+
+      # Cancel a previously-scheduled deferral (race-safe no-op flag).
+      def cancel_deferred(deferral) = deferral&.cancel
 
       def build_message(method:, sender:, params:, block:) = message_class.new(actor: @actor, method:, sender:, params:, block:)
 

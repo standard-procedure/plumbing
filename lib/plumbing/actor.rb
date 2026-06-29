@@ -10,6 +10,10 @@ module Plumbing
 
     FIBER_KEY = :plumbing_actor_sender_stack
 
+    # Raised when an actor asks for a capability its worker cannot provide
+    # (e.g. deferring a message on the inline worker).
+    NotSupported = Class.new(StandardError)
+
     def initialize(...)
       super
       @worker = Plumbing::Actor.worker_for self
@@ -26,6 +30,15 @@ module Plumbing
     # worker this is the complete nested call-chain; under async each hop runs in
     # its own fiber, so it holds the immediate sender only.
     def current_senders = (Fiber[FIBER_KEY] || []).dup
+
+    # Ask the worker to deliver `call` to this actor after `delay` seconds.
+    # Returns a Plumbing::Actor::Deferral that can be passed to cancel_deferred.
+    def after(delay, call:, sender: nil, **params, &block)
+      worker.after(delay, method: call, sender: sender, params: params, block: block)
+    end
+
+    # Cancel a deferral returned by #after.
+    def cancel_deferred(deferral) = worker.cancel_deferred(deferral)
 
     def self.included klass
       klass.extend Definitions
