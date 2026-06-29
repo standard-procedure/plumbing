@@ -45,6 +45,22 @@ module Plumbing
         name.to_sym
       end
 
+      def delay(seconds) = @default_delay = seconds.to_f
+
+      def default_delay = @default_delay ||= 10.0
+
+      def timeout(seconds) = @default_timeout = seconds.to_f
+
+      def default_timeout = @default_timeout ||= 86_400.0
+
+      def wait_until(name, delay: nil, timeout: nil, &block)
+        builder = DecisionBuilder.new
+        builder.instance_eval(&block)
+        options = WaitOptions.new(delay: (delay || default_delay).to_f, timeout: (timeout || default_timeout).to_f)
+        states[name.to_sym] = State.new(name: name.to_sym, kind: :wait, transitions: builder.transitions.freeze, wait_options: options)
+        name.to_sym
+      end
+
       def call(pipeline: nil, **attrs)
         new(pipeline: pipeline).tap { |op| op.__send__(:start, attrs) }
       end

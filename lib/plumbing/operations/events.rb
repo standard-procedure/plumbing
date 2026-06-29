@@ -35,6 +35,12 @@ module Plumbing
       prop :attributes, Hash
     end
 
-    [Started, Transitioned, Completed, Failed].each { |klass| Plumbing::Pipeline.register(klass) }
+    class Waiting < Plumbing::Event
+      prop :operation_id, Integer
+      prop :state, Symbol
+      prop :attributes, Hash
+    end
+
+    [Started, Transitioned, Waiting, Completed, Failed].each { |klass| Plumbing::Pipeline.register(klass) }
   end
 end
