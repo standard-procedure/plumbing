@@ -12,3 +12,6 @@
 
 # stupid mac
 .DS_Store
+
+# superpowers subagent-driven-development scratch (ledgers, agent reports, review packages)
+.superpowers/
