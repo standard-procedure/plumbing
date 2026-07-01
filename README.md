@@ -48,38 +48,66 @@ Plumbing::Actor.uses :async
 Actors track who called them — `current_sender` (immediate) and
 `current_senders` (the full call-chain).
 
-### Services
+### Providers
 
-A lock-free service locator that doubles as a path router.
+A parameterised object locator
 
-```ruby
-Plumbing.services.register :config, AppConfig.load    # eager singleton  (alias: singleton)
-Plumbing.services.register(:db) { Database.connect }  # lazy singleton, built once
-Plumbing.services.provide(:clock) { Time.now }        # new instance every access (alias: factory)
-
-Plumbing.services[:db]
-```
-
-Names containing `/` are **routes**. Static segments match literally; `:name`
-segments capture a value bound to the block's keyword of the same name.
+- `register` - registers an object at a path - lookups on that path return the same object each time
+- `provide` - registers a factory at a path - lookups on that path return a new object each time
 
 ```ruby
-# fresh every access — re-runs the block
-Plumbing.services.provide("people/:id/addresses") { |id:| Person.find(id).addresses }
-Plumbing.services["/people/123/addresses"]   # => the addresses
+# Every lookup returns the same object which is registered immediately
+Plumbing.services.register "app/config", AppConfig.load    
+Plumbing.services["app/config"]
 
-# singleton per concrete path — one cached object per id
-Plumbing.services.register("people/:id") { |id:| PersonActor.spawn(id) }
-Plumbing.services["/people/123"]              # => the same actor each call
+# The first lookup calls the block and subsequent lookups are cached
+Plumbing.services.register("db") { Database.connect }  
+Plumbing.services["db"]
+
+# Each lookup calls the block 
+Plumbing.services.provide("system/clock") { Time.now }
+Plumbing.services["system/clock"]
 ```
 
-A static segment beats a parameter at the same position, so `people/me` wins
-over `people/:id` regardless of registration order. Leading/trailing slashes are
-optional. `register` routes cache one instance per concrete path (the only
-read-time write, guarded by a mutex); everything else stays lock-free.
+The path can contain parameters which are then passed as keyword arguments to the provider block.  The arguments are always strings as they are extracted from the lookup query.  
 
-Use the global `Plumbing.services`, or build and manage your own registry
-instances independently.
+```ruby
+# Every lookup calls `Person.find`
+Plumbing.services.provide("people/:id") { |id:| Person.find(id) }
+Plumbing.services["/people/123"]   
+
+# The first lookup calls `Person.find` and subsequent lookups are cached
+Plumbing.services.register("people/:id") { |id:| Person.find(id) }
+Plumbing.services["/people/123"]              
+```
+
+If there is a conflict between a static path and a dynamic path, the one with the most static matches wins.  
+
+```ruby
+@provider = Plumbing::Provider.new 
+
+@provider.register("users/:id") { |id:| User.find(id) }
+@provider.register("users/me") { Current.user }
+
+@provider["users/me"] # => Current.user 
+```
+
+```ruby
+@provider = Plumbing::Provider.new 
+
+# path has 2 static and 2 dynamic segments
+@provider.register("users/:username/comments/:comment_id") { |username:, comment_id:| "user #{username} and comment #{comment_id}" }
+# path has 3 static and 1 dynamic segment
+@provider.register("users/alice/comments/:comment_id") { |comment_id:|  "comment #{comment_id}" }
+
+# matches alice because the path has 3 static segments
+@provider["users/alice/comments/123"] # => comment 123
+@provider["users/bob/comments/123"] # => user bob and comment 123
+```
+
+Paths are automatically stripped of leading and trailing slashes.  
+
+Use the global `Plumbing.services`, or build and manage your own registry instances independently.
 
 ### Pipeline + Event
 

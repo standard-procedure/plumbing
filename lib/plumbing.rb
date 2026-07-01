@@ -16,7 +16,7 @@ require_relative "plumbing/version"
 require_relative "plumbing/types"
 require_relative "plumbing/object"
 require_relative "plumbing/actor"
-require_relative "plumbing/services"
+require_relative "plumbing/provider"
 require_relative "plumbing/event"
 require_relative "plumbing/pipeline"
 
