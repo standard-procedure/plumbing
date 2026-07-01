@@ -74,7 +74,7 @@ await { counter.increment(by: 2) }
   messages **one at a time, in arrival order**.
 - Actors now track who called them: `current_sender` / `current_senders`.
 
-**New: Services locator** — `register`/`create` (aliases `singleton`/`factory`):
+**New: Services locator** — `register`/`provide` (aliases `singleton`/`factory`):
 
 ```ruby
 Plumbing.services.register(:config, AppConfig.load)   # eager singleton
@@ -164,4 +164,3 @@ Plumbing.services[:db]
 - Initial release
 
 ## [Unreleased]
-
