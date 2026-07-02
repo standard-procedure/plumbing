@@ -1,33 +1,33 @@
 # frozen_string_literal: true
 
-require "plumbing/operations"
+require "plumbing/operation"
 
-RSpec.describe "Plumbing::Operations data types" do
+RSpec.describe "Plumbing::Operation data types" do
   it "evaluates a Transition guard in the operation's context" do
     op = Object.new
     def op.ready? = true
-    unconditional = Plumbing::Operations::Transition.new(target: :a, guard: nil, label: nil)
-    guarded = Plumbing::Operations::Transition.new(target: :b, guard: -> { ready? }, label: "ok")
+    unconditional = Plumbing::Operation::Transition.new(target: :a, guard: nil, label: nil)
+    guarded = Plumbing::Operation::Transition.new(target: :b, guard: -> { ready? }, label: "ok")
     expect(unconditional.matches?(op)).to be true
     expect(guarded.matches?(op)).to be true
   end
 
   it "defaults WaitOptions to 10s poll / 24h timeout" do
-    expect(Plumbing::Operations::WaitOptions.new.delay).to eq 10.0
-    expect(Plumbing::Operations::WaitOptions.new.timeout).to eq 86_400.0
+    expect(Plumbing::Operation::WaitOptions.new.delay).to eq 10.0
+    expect(Plumbing::Operation::WaitOptions.new.timeout).to eq 86_400.0
   end
 
   it "builds a State with its kind constrained" do
-    state = Plumbing::Operations::State.new(name: :go, kind: :result)
+    state = Plumbing::Operation::State.new(name: :go, kind: :result)
     expect(state.name).to eq :go
     expect(state.transitions).to eq []
-    expect { Plumbing::Operations::State.new(name: :x, kind: :nonsense) }.to raise_error(StandardError)
+    expect { Plumbing::Operation::State.new(name: :x, kind: :nonsense) }.to raise_error(StandardError)
   end
 end
 
-RSpec.describe "Plumbing::Operations attributes" do
+RSpec.describe "Plumbing::Operation attributes" do
   let(:task_class) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :count, Integer
       attribute :note, _Nilable(String)
     end
@@ -49,9 +49,9 @@ RSpec.describe "Plumbing::Operations attributes" do
   end
 end
 
-RSpec.describe "Plumbing::Operations state DSL" do
+RSpec.describe "Plumbing::Operation state DSL" do
   let(:task_class) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :n, Integer
       starts_with :check
       decision :check do
@@ -90,9 +90,9 @@ RSpec.describe "Plumbing::Operations state DSL" do
   end
 end
 
-RSpec.describe "Plumbing::Operations advance loop" do
+RSpec.describe "Plumbing::Operation advance loop" do
   let(:doubler) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :n, Integer
       attribute :result, _Nilable(Integer)
       starts_with :check
@@ -122,7 +122,7 @@ RSpec.describe "Plumbing::Operations advance loop" do
   end
 
   it "fails with NoDecision when a decision matches nothing" do
-    klass = Class.new(Plumbing::Operations::Task) do
+    klass = Class.new(Plumbing::Operation) do
       attribute :flag, _Boolean
       starts_with :pick
       decision :pick do
@@ -132,7 +132,7 @@ RSpec.describe "Plumbing::Operations advance loop" do
     end
     op = klass.call(flag: false)
     expect(op).to be_failed
-    expect(op.exception).to be_a(Plumbing::Operations::NoDecision)
+    expect(op.exception).to be_a(Plumbing::Operation::NoDecision)
   end
 
   it "test(:state) drives the loop from a chosen state" do
@@ -142,9 +142,9 @@ RSpec.describe "Plumbing::Operations advance loop" do
   end
 end
 
-RSpec.describe "Plumbing::Operations events" do
+RSpec.describe "Plumbing::Operation events" do
   let(:doubler) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :n, Integer
       attribute :result, _Nilable(Integer)
       starts_with :double
@@ -159,9 +159,9 @@ RSpec.describe "Plumbing::Operations events" do
     pipeline.observe { |event| events << event }
     doubler.call(pipeline: pipeline, n: 5)
     expect(events.map(&:class)).to eq [
-      Plumbing::Operations::Started,
-      Plumbing::Operations::Transitioned,
-      Plumbing::Operations::Completed
+      Plumbing::Operation::Started,
+      Plumbing::Operation::Transitioned,
+      Plumbing::Operation::Completed
     ]
     expect(events.last.attributes).to eq({n: 5, result: 10})
     expect(events.last.state).to eq :done
@@ -172,9 +172,9 @@ RSpec.describe "Plumbing::Operations events" do
   end
 end
 
-RSpec.describe "Plumbing::Operations#to_mermaid" do
+RSpec.describe "Plumbing::Operation#to_mermaid" do
   let(:task_class) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :n, Integer
       starts_with :check
       decision :check do

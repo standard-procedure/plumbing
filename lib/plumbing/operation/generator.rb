@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Plumbing
-  module Operations
-    # Generates a Plumbing::Operations::Task skeleton from a mermaid flowchart —
+  class Operation
+    # Generates a Plumbing::Operation skeleton from a mermaid flowchart —
     # the inverse of Task#to_mermaid. Pure text-in / text-out; no runtime deps.
     module Generator
       Error = Class.new(StandardError)
@@ -110,7 +110,7 @@ module Plumbing
         out = []
         out << "# Generated from a mermaid flowchart. Fill in the attributes, guard bodies and"
         out << "# action bodies (marked `raise NotImplementedError`), then run `standardrb --fix`."
-        out << "class #{class_name} < Plumbing::Operations::Task"
+        out << "class #{class_name} < Plumbing::Operation"
         out << "  # TODO: declare attributes, e.g. attribute :name, String"
         out << ""
         out << "  starts_with :#{start}"

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plumbing
-  module Operations
+  class Operation
     Error = Class.new(StandardError)
     NoDecision = Class.new(Error)     # a decision matched no condition
     NoTransition = Class.new(Error)   # an action has no `.then`

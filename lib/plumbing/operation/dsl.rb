@@ -3,7 +3,7 @@
 require_relative "state"
 
 module Plumbing
-  module Operations
+  class Operation
     # Class-level authoring DSL, extended onto Task. This file carries the
     # attribute mechanism; state builders are added in a later task.
     module DSL
@@ -93,7 +93,7 @@ module Plumbing
         end
         define_method(:"_#{name}") do |args:, kwargs:|
           expected = self.class.interaction_states[name]
-          raise Plumbing::Operations::InvalidState, "##{name} cannot run in state #{@current_state.inspect}" unless @current_state == expected
+          raise Plumbing::Operation::InvalidState, "##{name} cannot run in state #{@current_state.inspect}" unless @current_state == expected
           instance_exec(*args, **kwargs, &body)
           run_loop
         end

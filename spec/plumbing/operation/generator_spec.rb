@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require "plumbing/operations"
-require "plumbing/operations/generator"
+require "plumbing/operation"
+require "plumbing/operation/generator"
 
-RSpec.describe Plumbing::Operations::Generator do
+RSpec.describe Plumbing::Operation::Generator do
   describe ".parse" do
     it "reads each shape into the right kind" do
       nodes, _edges, _start = described_class.parse(<<~MMD)
@@ -44,14 +44,14 @@ RSpec.describe Plumbing::Operations::Generator do
     end
 
     it "raises on an unparseable line" do
-      expect { described_class.parse("this is not mermaid") }.to raise_error(Plumbing::Operations::Generator::Error, /line 1/)
+      expect { described_class.parse("this is not mermaid") }.to raise_error(Plumbing::Operation::Generator::Error, /line 1/)
     end
   end
 
   describe ".from_mermaid" do
     it "emits the class header, attributes placeholder and starts_with" do
       src = described_class.from_mermaid("start([Start]) --> done\ndone([\"finished\"])", class_name: "Simple")
-      expect(src).to include("class Simple < Plumbing::Operations::Task")
+      expect(src).to include("class Simple < Plumbing::Operation")
       expect(src).to include("# TODO: declare attributes")
       expect(src).to include("starts_with :done")
       expect(src).to include("result :done")
@@ -92,13 +92,13 @@ RSpec.describe Plumbing::Operations::Generator do
           b(["b"])
           c(["c"])
         MMD
-      }.to raise_error(Plumbing::Operations::Generator::Error, /action :a/)
+      }.to raise_error(Plumbing::Operation::Generator::Error, /action :a/)
     end
 
     it "raises when an edge targets an undefined node" do
       expect {
         described_class.from_mermaid("start([Start]) --> a\na[\"x\"] --> ghost", class_name: "Bad")
-      }.to raise_error(Plumbing::Operations::Generator::Error, /undefined node :ghost/)
+      }.to raise_error(Plumbing::Operation::Generator::Error, /undefined node :ghost/)
     end
 
     it "infers the start from the node with no inbound edge when no Start marker is present" do

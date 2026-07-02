@@ -4,7 +4,7 @@ require_relative "transition"
 require_relative "wait_options"
 
 module Plumbing
-  module Operations
+  class Operation
     # A node in the state machine. `action` runs on entry (nil for
     # decision/result). `transitions` are ordered; the first matching guard
     # wins. `wait_options` is set only for :wait states (Plan 2b).

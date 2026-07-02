@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require "plumbing/operations"
+require "plumbing/operation"
 require "plumbing/actor/async"
 require "async"
 
-RSpec.describe "Plumbing::Operations wait DSL" do
+RSpec.describe "Plumbing::Operation wait DSL" do
   let(:task_class) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :ready, _Boolean, default: false
       delay 0.05
       timeout 2.0
@@ -41,11 +41,11 @@ RSpec.describe "Plumbing::Operations wait DSL" do
   end
 
   it "registers a Waiting event" do
-    expect(Plumbing::Operations::Waiting.new(operation_id: 1, state: :await_ready, attributes: {}).state).to eq :await_ready
+    expect(Plumbing::Operation::Waiting.new(operation_id: 1, state: :await_ready, attributes: {}).state).to eq :await_ready
   end
 end
 
-RSpec.describe "Plumbing::Operations wait runtime" do
+RSpec.describe "Plumbing::Operation wait runtime" do
   before do
     Plumbing::Actor.register(:async) { |actor| Plumbing::Actor::Async.new(actor: actor) }
     Plumbing::Actor.uses :async
@@ -59,7 +59,7 @@ RSpec.describe "Plumbing::Operations wait runtime" do
   let(:gate) { Struct.new(:open).new(false) }
 
   let(:poll_waiter) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :gate, _Any?
       delay 0.03
       timeout 5.0
@@ -85,7 +85,7 @@ RSpec.describe "Plumbing::Operations wait runtime" do
   end
 
   it "fails with Timeout when the guard never satisfies" do
-    short = Class.new(Plumbing::Operations::Task) do
+    short = Class.new(Plumbing::Operation) do
       attribute :gate, _Any?
       delay 0.02
       timeout 0.05
@@ -99,12 +99,12 @@ RSpec.describe "Plumbing::Operations wait runtime" do
       op = short.call(gate: gate)
       task.sleep 0.3
       expect(op).to be_failed
-      expect(op.exception).to be_a(Plumbing::Operations::Timeout)
+      expect(op.exception).to be_a(Plumbing::Operation::Timeout)
     end
   end
 
   let(:registration) do
-    Class.new(Plumbing::Operations::Task) do
+    Class.new(Plumbing::Operation) do
       attribute :name, _Nilable(String)
       delay 0.05
       timeout 5.0
@@ -137,7 +137,7 @@ RSpec.describe "Plumbing::Operations wait runtime" do
       op.provide_name("Cher")
       task.sleep 0.02
       expect(op).to be_completed
-      expect { op.provide_name("Dionne").await }.to raise_error(Plumbing::Operations::InvalidState)
+      expect { op.provide_name("Dionne").await }.to raise_error(Plumbing::Operation::InvalidState)
     end
   end
 
@@ -154,11 +154,11 @@ RSpec.describe "Plumbing::Operations wait runtime" do
   end
 end
 
-RSpec.describe "Plumbing::Operations wait under the inline worker" do
+RSpec.describe "Plumbing::Operation wait under the inline worker" do
   before { Plumbing::Actor.uses :inline }
 
   it "raises NotSupported up front" do
-    klass = Class.new(Plumbing::Operations::Task) do
+    klass = Class.new(Plumbing::Operation) do
       attribute :gate, _Any?
       starts_with :await_gate
       wait_until :await_gate do

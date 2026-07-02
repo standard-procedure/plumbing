@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plumbing
-  module Operations
+  class Operation
     # Renders a Task's states as a mermaid `flowchart TD`. Pure function of the
     # class's States — the structure is real; only edge labels are author text.
     module Mermaid

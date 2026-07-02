@@ -4,7 +4,7 @@ require_relative "../event"
 require_relative "../pipeline"
 
 module Plumbing
-  module Operations
+  class Operation
     # Lifecycle events. Each checkpoint carries the operation id, the current
     # state, and a full attributes snapshot — enough for a persistence observer
     # to upsert (operation_id, state, attributes).
