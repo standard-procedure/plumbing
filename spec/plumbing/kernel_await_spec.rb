@@ -57,6 +57,26 @@ RSpec.describe "Kernel#await / Kernel#Await" do
     end
   end
 
+  describe "timeout" do
+    it "raises Timeout::Error when the awaited result exceeds the duration" do
+      slow = Class.new do
+        include Plumbing::Awaitable
+
+        def await = sleep(0.3)
+      end
+      expect { await(0.05) { slow.new } }.to raise_error(Timeout::Error)
+    end
+
+    it "returns normally when the awaited result completes within the duration" do
+      quick = Class.new do
+        include Plumbing::Awaitable
+
+        def await = "done"
+      end
+      expect(await(1) { quick.new }).to eq "done"
+    end
+  end
+
   describe "alias relationship" do
     it "exposes both lowercase await and capitalised Await" do
       expect(Kernel.instance_methods).to include(:await, :Await)
