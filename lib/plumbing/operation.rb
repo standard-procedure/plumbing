@@ -24,8 +24,16 @@ module Plumbing
     def initialize(pipeline: nil)
       super()
       @pipeline = pipeline
+      @current_state = nil
       @status = :pending
+      @attributes = {}
+      @exception = nil
+      @timeout_id = nil
+      @waiting_state = nil
       @wait_generation = 0
+      @wait_started_at = nil
+      @restored_wait_elapsed = nil
+      @poll_id = nil
     end
 
     def attributes = @attributes.to_h
