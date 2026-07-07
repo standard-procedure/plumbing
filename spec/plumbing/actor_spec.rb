@@ -75,5 +75,22 @@ RSpec.describe Plumbing::Actor do
       message.deliver
       expect(message.result).to eq "Hello"
     end
+
+    it "allows blocks to be passed to async methods" do
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        async :say_something do
+          returns do |&block|
+            "I am speaking #{block.call}"
+          end
+        end
+      end
+
+      instance = test_class.new
+      message = instance.say_something { "in a block" }
+      message.deliver
+      expect(message.result).to eq "I am speaking in a block"
+    end
   end
 end

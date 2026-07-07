@@ -2,19 +2,24 @@
 
 module Plumbing
   class Provider
+    include Literal::Types
+    include Plumbing::Actor
+
     require_relative "provider/router"
 
-    include Literal::Types
-
     def initialize
+      super
       @values = {}
       @router = Router.new
       @lock = Mutex.new
     end
 
-    def register path, value = nil, &provider
-      raise ArgumentError unless value.nil? ^ provider.nil?
-      safely do
+    async :register do
+      param :path, String
+      param :value, _Any?, default: nil
+
+      returns do |path:, value:, &provider|
+        raise ArgumentError unless value.nil? ^ provider.nil?
         route = @router.register path
         raise ArgumentError if !value.nil? && route.dynamic?
         value.nil? ? _register_dynamic(route.path, provider) : _set(route.path, value)
@@ -22,21 +27,26 @@ module Plumbing
     end
     alias_method :singleton, :register
 
-    def provide path, &provider
-      safely do
+    async :provide do
+      param :path, String
+
+      returns do |path:, &provider|
         route = @router.register path
         _set_dynamic(route.path, provider)
       end
     end
     alias_method :factory, :provide
 
-    def get path
-      query = @router.query path
-      _value_for(query).get(query)
-    end
-    alias_method :[], :get
+    async :get do
+      param :path, String
 
-    def safely(&) = @lock.synchronize(&)
+      returns do |path:|
+        query = @router.query path
+        _value_for(query).get(query)
+      end
+    end
+
+    def [](path) = get(path:).await
 
     private def _set(path, value)
       @values[path] = StaticValue.new value:
@@ -44,7 +54,7 @@ module Plumbing
 
     private def _register_dynamic(path, provider)
       cache_updater = ->(query, value) do
-        safely { _set(query.path, value) }
+        _set(query.path, value)
       end
       @values[path] = SelfCachingValue.new provider:, cache_updater:
     end

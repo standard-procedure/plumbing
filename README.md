@@ -37,6 +37,20 @@ g = Greeting.new(name: "Alice")
 await { g.say(greeting: "Hi") }   # => "Hi Alice"
 ```
 
+Async messages forward **blocks** as well as params — declare `&block` in the
+`returns` signature and the caller's block arrives intact:
+
+```ruby
+class Speaker
+  include Plumbing::Actor
+  async :say_something do
+    returns { |&block| "I am speaking #{block.call}" }
+  end
+end
+
+await { Speaker.new.say_something { "in a block" } }   # => "I am speaking in a block"
+```
+
 Each actor owns a pluggable **worker**. `inline` (the default) ships with the
 core; `async`, `threaded` and `rails` are opt-in:
 
@@ -50,22 +64,25 @@ Actors track who called them — `current_sender` (immediate) and
 
 ### Providers
 
-A parameterised object locator
+A parameterised object locator. `Provider` is itself a **Plumbing actor**, so
+`register`, `provide` and `get` are async messages taking keyword arguments.
+Lookups via `[]` are the synchronous convenience — `provider[path]` is exactly
+`provider.get(path:).await`.
 
 - `register` - registers an object at a path - lookups on that path return the same object each time
 - `provide` - registers a factory at a path - lookups on that path return a new object each time
 
 ```ruby
 # Every lookup returns the same object which is registered immediately
-Plumbing.services.register "app/config", AppConfig.load    
+Plumbing.services.register path: "app/config", value: AppConfig.load
 Plumbing.services["app/config"]
 
 # The first lookup calls the block and subsequent lookups are cached
-Plumbing.services.register("db") { Database.connect }  
+Plumbing.services.register(path: "db") { Database.connect }
 Plumbing.services["db"]
 
-# Each lookup calls the block 
-Plumbing.services.provide("system/clock") { Time.now }
+# Each lookup calls the block
+Plumbing.services.provide(path: "system/clock") { Time.now }
 Plumbing.services["system/clock"]
 ```
 
@@ -73,12 +90,21 @@ The path can contain parameters which are then passed as keyword arguments to th
 
 ```ruby
 # Every lookup calls `Person.find`
-Plumbing.services.provide("people/:id") { |id:| Person.find(id) }
-Plumbing.services["/people/123"]   
+Plumbing.services.provide(path: "people/:id") { |id:| Person.find(id) }
+Plumbing.services["/people/123"]
 
 # The first lookup calls `Person.find` and subsequent lookups are cached
-Plumbing.services.register("people/:id") { |id:| Person.find(id) }
-Plumbing.services["/people/123"]              
+Plumbing.services.register(path: "people/:id") { |id:| Person.find(id) }
+Plumbing.services["/people/123"]
+```
+
+Because `register` and `provide` are async, they return a message rather than
+raising inline. Registration errors (an ambiguous registration, a static value
+on a dynamic path) surface only when the message is awaited, so `await` if you
+need to catch them:
+
+```ruby
+provider.register(path: "locate/:object", value: "object").await   # => raises ArgumentError
 ```
 
 If there is a conflict between a static path and a dynamic path, the one with the most static matches wins.  
@@ -86,8 +112,8 @@ If there is a conflict between a static path and a dynamic path, the one with th
 ```ruby
 @provider = Plumbing::Provider.new 
 
-@provider.register("users/:id") { |id:| User.find(id) }
-@provider.register("users/me") { Current.user }
+@provider.register(path: "users/:id") { |id:| User.find(id) }
+@provider.register(path: "users/me") { Current.user }
 
 @provider["users/me"] # => Current.user 
 ```
@@ -96,9 +122,9 @@ If there is a conflict between a static path and a dynamic path, the one with th
 @provider = Plumbing::Provider.new 
 
 # path has 2 static and 2 dynamic segments
-@provider.register("users/:username/comments/:comment_id") { |username:, comment_id:| "user #{username} and comment #{comment_id}" }
+@provider.register(path: "users/:username/comments/:comment_id") { |username:, comment_id:| "user #{username} and comment #{comment_id}" }
 # path has 3 static and 1 dynamic segment
-@provider.register("users/alice/comments/:comment_id") { |comment_id:|  "comment #{comment_id}" }
+@provider.register(path: "users/alice/comments/:comment_id") { |comment_id:|  "comment #{comment_id}" }
 
 # matches alice because the path has 3 static segments
 @provider["users/alice/comments/123"] # => comment 123

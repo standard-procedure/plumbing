@@ -5,15 +5,15 @@ RSpec.describe Plumbing::Provider do
 
   describe "register (singleton)" do
     it "rejects ambiguous registrations" do
-      expect { provider.register "object" }.to raise_error ArgumentError
-      expect { provider.register("object", "Object") { "Dynamic" } }.to raise_error ArgumentError
+      expect { provider.register("object").await }.to raise_error ArgumentError
+      expect { provider.register("object", "Object") { "Dynamic" }.await }.to raise_error ArgumentError
     end
 
     context "given a static path" do
       it "registers and returns a static object as-is" do
         object = Object.new
 
-        provider.register "a/path", object
+        provider.register path: "a/path", value: object
 
         expect(provider["a/path"].object_id).to eq object.object_id
       end
@@ -21,13 +21,13 @@ RSpec.describe Plumbing::Provider do
       it "registers and returns an on-demand object" do
         object = Object.new
 
-        provider.register("a/path") { object }
+        provider.register(path: "a/path") { object }
 
         expect(provider["a/path"].object_id).to eq object.object_id
       end
 
       it "returns the same on-demand object on subsequent requests" do
-        provider.register("a/path") { Object.new }
+        provider.register(path: "a/path") { Object.new }
 
         first = provider["a/path"]
         second = provider["a/path"]
@@ -38,7 +38,7 @@ RSpec.describe Plumbing::Provider do
       it "does not build the on-demand object before it is requested" do
         built = nil
 
-        provider.register("a/path") { built = Object.new }
+        provider.register(path: "a/path") { built = Object.new }
 
         expect(built).to eq nil
         found = provider["a/path"]
@@ -46,8 +46,8 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "raises an error if given an invalid path" do
-        provider.register "a", "aardvark"
-        provider.register("b") { "badger" }
+        provider.register path: "a", value: "aardvark"
+        provider.register(path: "b") { "badger" }
 
         expect { provider["c"] }.to raise_error Plumbing::Provider::Router::InvalidPath
       end
@@ -55,11 +55,11 @@ RSpec.describe Plumbing::Provider do
 
     context "given a dynamic path" do
       it "does not allow a static object to be registered" do
-        expect { provider.register "locate/:object", "object" }.to raise_error ArgumentError
+        expect { provider.register(path: "locate/:object", value: "object").await }.to raise_error ArgumentError
       end
 
       it "registers and returns an on-demand object based upon the parameters provided" do
-        provider.register "returns/:number" do |number:|
+        provider.register path: "returns/:number" do |number:|
           number.to_i
         end
 
@@ -67,7 +67,7 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "returns the same on-demand object on subsequent requests given the same parameters" do
-        provider.register "say/:something" do |something:|
+        provider.register path: "say/:something" do |something:|
           something.to_s.reverse
         end
 
@@ -78,7 +78,7 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "returns a different on-demand object on subsequent requests given different parameters" do
-        provider.register "say/:something" do |something:|
+        provider.register path: "say/:something" do |something:|
           something.to_s.reverse
         end
 
@@ -89,7 +89,7 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "raises an error if given an invalid path" do
-        provider.register "say/:something" do |something:|
+        provider.register path: "say/:something" do |something:|
           something.to_s.reverse
         end
 
@@ -103,13 +103,13 @@ RSpec.describe Plumbing::Provider do
       it "registers and returns an object on-demand" do
         object = Object.new
 
-        provider.provide("a/path") { object }
+        provider.provide(path: "a/path") { object }
 
         expect(provider["a/path"].object_id).to eq object.object_id
       end
 
       it "creates a new object on subsequent requests" do
-        provider.provide("a/path") { Object.new }
+        provider.provide(path: "a/path") { Object.new }
 
         first = provider["a/path"]
         second = provider["a/path"]
@@ -120,7 +120,7 @@ RSpec.describe Plumbing::Provider do
       it "does not build the on-demand object before it is requested" do
         built = nil
 
-        provider.provide("a/path") { built = Object.new }
+        provider.provide(path: "a/path") { built = Object.new }
 
         expect(built).to eq nil
         found = provider["a/path"]
@@ -128,7 +128,7 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "raises an error if given an invalid path" do
-        provider.provide("a") { "aardvark" }
+        provider.provide(path: "a") { "aardvark" }
 
         expect { provider["c"] }.to raise_error Plumbing::Provider::Router::InvalidPath
       end
@@ -136,7 +136,7 @@ RSpec.describe Plumbing::Provider do
 
     context "given a dynamic path" do
       it "registers and returns an object on-demand based upon the parameters provided" do
-        provider.provide "greet/:name/with/:greeting" do |name:, greeting:|
+        provider.provide path: "greet/:name/with/:greeting" do |name:, greeting:|
           "#{greeting.capitalize} #{name.capitalize}"
         end
 
@@ -144,7 +144,7 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "creates a new object on subsequent requests given the same parameters" do
-        provider.provide "greet/:name/with/:greeting" do |name:, greeting:|
+        provider.provide path: "greet/:name/with/:greeting" do |name:, greeting:|
           "#{greeting} #{name}"
         end
 
@@ -157,7 +157,7 @@ RSpec.describe Plumbing::Provider do
       it "does not build the on-demand object before it is requested" do
         built = nil
 
-        provider.provide "say/:something" do |something:|
+        provider.provide path: "say/:something" do |something:|
           built = something.to_s
         end
 
@@ -167,7 +167,7 @@ RSpec.describe Plumbing::Provider do
       end
 
       it "raises an error if given an invalid path" do
-        provider.provide "say/:something" do |something:|
+        provider.provide path: "say/:something" do |something:|
           something.to_s.reverse
         end
 
