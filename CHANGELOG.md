@@ -91,6 +91,11 @@ Cached registrations accept an optional `expires_in:` (seconds) TTL — the valu
 is evicted after that long and re-resolved on the next lookup (eviction is
 scheduled on the actor's worker, so it is a no-op under the `:inline` worker).
 
+A Provider can also be mounted under a wildcard tail path
+(`register(path: "prefix/*", value: nested_provider)`, or a block resolving to a
+Provider) — lookups beneath the prefix delegate the remaining path to the nested
+provider, like mounting a sub-router.
+
 ## [0.5.2] - 2024-10-08
 
  - Ensure preconditions are called in order

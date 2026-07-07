@@ -144,6 +144,24 @@ If there is a conflict between a static path and a dynamic path, the one with th
 @provider["users/bob/comments/123"] # => user bob and comment 123
 ```
 
+**Nested providers.** Mount another Provider under a wildcard tail path
+(`"prefix/*"`) and lookups beneath that prefix are delegated to it — like
+mounting a sub-router. A lookup of the bare prefix returns the nested provider
+itself; a lookup with a tail forwards the remaining path. Only a Provider may be
+mounted under a wildcard (a static value is checked on registration; a block is
+checked when it resolves).
+
+```ruby
+users = Plumbing::Provider.new
+users.register(path: "me") { Current.user }
+
+app = Plumbing::Provider.new
+app.register path: "users/*", value: users
+
+app["users"]      # => the `users` provider itself
+app["users/me"]   # => Current.user  (delegates "me" to the nested provider)
+```
+
 Paths are automatically stripped of leading and trailing slashes.  
 
 Use the global `Plumbing.services`, or build and manage your own registry instances independently.

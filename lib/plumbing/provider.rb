@@ -22,8 +22,14 @@ module Plumbing
       returns do |path:, value:, expires_in:, &provider|
         raise ArgumentError unless value.nil? ^ provider.nil?
         route = @router.register path
-        raise ArgumentError if !value.nil? && route.dynamic?
-        value.nil? ? _register_dynamic(route.path, provider, expires_in) : _set(route.path, value)
+        if route.wildcard?
+          _register_wildcard(route.path, value, provider)
+        elsif value.nil?
+          _register_dynamic(route.path, provider, expires_in)
+        else
+          raise ArgumentError if route.dynamic?
+          _set(route.path, value)
+        end
       end
     end
     alias_method :singleton, :register
@@ -90,6 +96,18 @@ module Plumbing
       @values[path] = DynamicValue.new provider:
     end
 
+    # A wildcard registration ("some/path/*") mounts a nested Provider at the
+    # prefix. Only Providers may be mounted: a static value is checked now; a
+    # block is checked when it resolves (see DynamicWildcard).
+    private def _register_wildcard(path, value, provider)
+      if value.nil?
+        @values[path] = DynamicWildcard.new provider:
+      else
+        raise ArgumentError unless value.is_a?(Plumbing::Provider)
+        @values[path] = StaticWildcard.new nested: value
+      end
+    end
+
     private def _value_for(query)
       @values[query.path] || @values[query.key]
     end
@@ -116,6 +134,28 @@ module Plumbing
       end
     end
     private_constant :SelfCachingValue
+
+    # A nested Provider mounted at a wildcard prefix. A lookup of the bare
+    # prefix returns the nested provider itself; a lookup with a tail delegates
+    # the remaining path to it.
+    class StaticWildcard < Literal::Data
+      prop :nested, _Any
+      def get(query) = query.remainder.empty? ? @nested : @nested[query.remainder]
+    end
+    private_constant :StaticWildcard
+
+    # As StaticWildcard, but the nested Provider is produced on demand by a
+    # block. Because the block's result is only known when it runs, the
+    # Provider constraint is enforced here rather than at registration.
+    class DynamicWildcard < Literal::Data
+      prop :provider, _Callable
+      def get(query)
+        nested = @provider.call
+        raise ArgumentError unless nested.is_a?(Plumbing::Provider)
+        query.remainder.empty? ? nested : nested[query.remainder]
+      end
+    end
+    private_constant :DynamicWildcard
   end
 
   def self.services

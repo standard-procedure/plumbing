@@ -151,6 +151,52 @@ RSpec.describe Plumbing::Provider do
         end
       end
     end
+
+    context "given a wildcard path" do
+      it "only allows Providers to be registered under a wildcard" do
+        object = Object.new
+
+        expect { provider.register(path: "static/*", value: object).await }.to raise_error ArgumentError
+
+        provider.register(path: "dynamic/*") { object }
+
+        expect { provider["dynamic"] }.to raise_error ArgumentError
+      end
+
+      it "registers and returns a static provider" do
+        other = Plumbing::Provider.new
+
+        provider.register path: "other/*", value: other
+
+        expect(provider["other"].object_id).to eq other.object_id
+      end
+
+      it "delegates paths to a static provider" do
+        other = Plumbing::Provider.new
+        other.register path: "say/hello", value: "Hello"
+
+        provider.register path: "other/*", value: other
+
+        expect(provider["other/say/hello"]).to eq "Hello"
+      end
+
+      it "registers and returns an on-demand provider" do
+        other = Plumbing::Provider.new
+
+        provider.register(path: "other/*") { other }
+
+        expect(provider["other"].object_id).to eq other.object_id
+      end
+
+      it "delegates paths to an on-demand provider" do
+        other = Plumbing::Provider.new
+        other.register(path: "say/:something") { |something:| something.to_s.reverse }
+
+        provider.register path: "other/*", value: other
+
+        expect(provider["other/say/hello"]).to eq "olleh"
+      end
+    end
   end
 
   describe "provide (factory)" do
