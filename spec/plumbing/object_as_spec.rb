@@ -12,11 +12,10 @@ RSpec.describe "Object#as" do
     expect { "not callable".as(callable) }.to raise_error(Literal::TypeError)
   end
 
-  it "accepts a Plumbing interface constant" do
-    observer = Object.new
-    def observer.observe = nil
-    def observer.remove = nil
-    def observer.remove_all = nil
-    expect(observer.as(Plumbing::Observable)).to be(observer)
+  it "accepts an interface built with Literal::Types._Interface" do
+    quacker = Literal::Types._Interface(:quack)
+    duck = Object.new
+    def duck.quack = "quack"
+    expect(duck.as(quacker)).to be(duck)
   end
 end

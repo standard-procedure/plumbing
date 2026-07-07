@@ -19,6 +19,7 @@ require_relative "plumbing/actor"
 require_relative "plumbing/provider"
 require_relative "plumbing/event"
 require_relative "plumbing/pipeline"
+require_relative "plumbing/observable"
 require "timeout"
 
 module Kernel

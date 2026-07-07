@@ -15,7 +15,7 @@ opt-in workers `require` their own and you add the gem to your app.
 ```ruby
 obj.as(Plumbing::Callable)            # before — returned a narrowing proxy
 obj.as(Literal::Types._Callable)      # after  — validates and returns obj itself
-obj.as(Plumbing::Observable)          # Observable = _Interface(:observe, :remove, :remove_all)
+obj.as(Literal::Types._Interface(:observe, :remove, :remove_all))  # any literal interface works
 ```
 
 **`Plumbing::Pipeline` is now the event stream (was `Plumbing::Pipe`).** The old
@@ -42,6 +42,14 @@ source.notify(event_type: "SomethingHappened", params: {foo: 1})
 
 Compose with `Only` / `Except` (string names, trailing `*` wildcard), `Filter`
 (Regexp) and `Junction` (fan-in). Duplicate events are debounced.
+
+**New: `Plumbing::Observable` module** — mix into any object (actor or not) to
+give it its own event stream. It adds a public subscriber interface (`observe` /
+`remove` / `remove_all`) and a private emit interface (`push` / `notify`), backed
+by a lazily-created internal `Pipeline::Source`. `Operation` now uses it instead
+of hand-rolling a pipeline. (The old `Plumbing::Observable` interface *constant*,
+only ever an `Object#as` example, is removed — build interfaces inline with
+`Literal::Types._Interface(...)`.)
 
 **Actors rebuilt (composition, not proxies):**
 

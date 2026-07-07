@@ -6,6 +6,5 @@ module Plumbing
   def self.OneOf(*values) = proc { |v| values.include? v }
 
   # `Callable` already ships with literal as `Literal::Types._Callable` — use
-  # that directly. `Observable` is the pipeline observer interface.
-  Observable = Literal::Types._Interface(:observe, :remove, :remove_all)
+  # that directly.
 end

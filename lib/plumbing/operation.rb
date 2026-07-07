@@ -4,6 +4,7 @@ require "literal"
 require_relative "actor"
 require_relative "event"
 require_relative "pipeline"
+require_relative "observable"
 require_relative "operation/errors"
 require_relative "operation/transition"
 require_relative "operation/wait_options"
@@ -17,6 +18,7 @@ module Plumbing
   # with the DSL. An Operation is a Plumbing::Actor.
   class Operation
     include Plumbing::Actor
+    include Plumbing::Observable
     extend Literal::Types
     extend DSL
     extend Mermaid
@@ -86,7 +88,7 @@ module Plumbing
 
     def enter_running
       @status = :running
-      emit Started.new(operation_id: object_id, state: @current_state, attributes: attributes)
+      push Started.new(operation_id: object_id, state: @current_state, attributes: attributes)
     end
 
     def run_loop
@@ -95,7 +97,7 @@ module Plumbing
         case state.kind
         when :result
           @status = :completed
-          emit Completed.new(operation_id: object_id, state: state.name, attributes: attributes)
+          push Completed.new(operation_id: object_id, state: state.name, attributes: attributes)
         when :action
           instance_exec(&state.action) if state.action
           transition = state.transitions.first
@@ -125,13 +127,13 @@ module Plumbing
       leave_wait
       @status = :failed
       @exception = ex
-      emit Failed.new(operation_id: object_id, state: @current_state, exception: ex, attributes: attributes)
+      push Failed.new(operation_id: object_id, state: @current_state, exception: ex, attributes: attributes)
     end
 
     def move_to(transition)
       from = @current_state
       @current_state = transition.target
-      emit Transitioned.new(operation_id: object_id, from: from, to: @current_state, via: transition.label, attributes: attributes)
+      push Transitioned.new(operation_id: object_id, from: from, to: @current_state, via: transition.label, attributes: attributes)
     end
 
     def stale_poll?(token) = !token.nil? && token != @wait_generation
@@ -144,7 +146,7 @@ module Plumbing
       @wait_started_at = monotonic - (@restored_wait_elapsed || 0.0)
       @restored_wait_elapsed = nil
       @timeout_id = after(state.wait_options.timeout, call: :advance, poll_token: @wait_generation)
-      emit Waiting.new(operation_id: object_id, state: state.name, attributes: attributes)
+      push Waiting.new(operation_id: object_id, state: state.name, attributes: attributes)
     end
 
     def reschedule_poll(state)
@@ -163,7 +165,5 @@ module Plumbing
       @wait_generation += 1
       @poll_id = @timeout_id = @waiting_state = @wait_started_at = nil
     end
-
-    def emit(event) = @pipeline&.push(event: event)
   end
 end

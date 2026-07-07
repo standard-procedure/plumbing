@@ -188,6 +188,33 @@ app_events << SomethingHappened.new(id: "123")
 Compose with `Source`, `Only`, `Except`, `Filter` (regexp) and `Junction`
 (fan-in). Pushes are debounced and batched into a single notify pass.
 
+### Observable
+
+Mix `Plumbing::Observable` into any object — actor or not — to give it its own
+event stream. The host gains a public subscriber interface (`observe`, `remove`,
+`remove_all`) and a private emit interface (`push`, `notify`), backed by a
+lazily-created internal `Pipeline::Source`. Because the pipeline is the actor,
+these methods need not be async — they forward fire-and-forget.
+
+```ruby
+class Thermostat
+  include Plumbing::Observable
+
+  def temperature=(celsius)
+    @temperature = celsius
+    push TemperatureChanged.new(celsius: celsius)   # private — only the host emits
+  end
+end
+
+t = Thermostat.new
+t.observe { |event| puts "now #{event.celsius}°C" }
+t.temperature = 21   # => "now 21°C"
+```
+
+Observers subscribe from the outside; only the host emits. `Plumbing::Operation`
+is built on this — its lifecycle events (`Started`, `Transitioned`, …) are pushed
+through an `Observable` stream.
+
 ## Installation
 
 ```sh
