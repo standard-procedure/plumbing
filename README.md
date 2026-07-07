@@ -4,9 +4,8 @@ Small, fast building blocks for concurrent Ruby: **actors**, a **service
 locator** and a **composable event stream** — built on
 [`literal`](https://github.com/joeldrapper/literal) and nothing else.
 
-> **v1 is a breaking rewrite** (`0.5.2 → 1.0.0`), in progress on the `v1`
-> branch. See [DESIGN.md](DESIGN.md) for the full specification and
-> [PLAN.md](PLAN.md) for the build order.
+> **v1 is a breaking rewrite** (`0.5.2 → 1.0.0`). See the
+> [CHANGELOG](CHANGELOG.md) for what changed.
 
 ## Philosophy
 

@@ -2,7 +2,7 @@
 
 A ground-up rewrite. Plumbing is now a small, [`literal`](https://github.com/joeldrapper/literal)-based
 toolkit with three concepts: pluggable-worker **Actors**, a **Services**
-locator, and a composable **Event / Pipeline** stream. See `DESIGN.md`.
+locator, and a composable **Event / Pipeline** stream.
 
 **The only runtime dependency is `literal`.** `globalid` is dropped. The
 heavier worker dependencies (`async`, `rails`) are no longer in the core — the

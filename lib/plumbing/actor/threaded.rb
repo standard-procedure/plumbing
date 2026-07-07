@@ -8,8 +8,8 @@ module Plumbing
     # Processes an actor's messages on its own dedicated thread, ONE AT A TIME,
     # IN ARRIVAL ORDER. Concurrency is between actors (each has its own thread
     # and queue), never within one. Built on core Ruby — no concurrent-ruby.
-    # Arguments are passed by reference; see DESIGN.md `safe_threaded` for the
-    # marshalling / Ractor-safe variant.
+    # Arguments are passed by reference — there is no marshalling / Ractor-safe
+    # copying variant.
     #
     # The Worker is a frozen Literal::Data, so mutable state lives in container
     # objects (a Queue, a Mutex, a one-element Array holding the thread) rather
