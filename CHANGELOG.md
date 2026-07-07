@@ -1,8 +1,9 @@
-## [1.0.0] - unreleased — v1 rewrite
+## [1.0.0] - 2026-07-07 — v1 rewrite
 
 A ground-up rewrite. Plumbing is now a small, [`literal`](https://github.com/joeldrapper/literal)-based
-toolkit with three concepts: pluggable-worker **Actors**, a **Services**
-locator, and a composable **Event / Pipeline** stream.
+toolkit of composable concurrency primitives: pluggable-worker **Actors**, a
+**Provider** locator, a composable **Event / Pipeline** stream, an
+**Observable** mixin, and a state-machine **Operation** engine.
 
 **The only runtime dependency is `literal`.** `globalid` is dropped. The
 heavier worker dependencies (`async`, `rails`) are no longer in the core — the

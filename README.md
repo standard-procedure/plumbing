@@ -1,7 +1,8 @@
 # Plumbing
 
 Small, fast building blocks for concurrent Ruby: **actors**, a **service
-locator** and a **composable event stream** — built on
+locator**, a **composable event stream**, **observable** objects and a
+**state-machine engine** — built on
 [`literal`](https://github.com/joeldrapper/literal) and nothing else.
 
 > **v1 is a breaking rewrite** (`0.5.2 → 1.0.0`). See the
