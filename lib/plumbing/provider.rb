@@ -17,12 +17,13 @@ module Plumbing
     async :register do
       param :path, String
       param :value, _Any?, default: nil
+      param :expires_in, _Nilable(Numeric), default: nil
 
-      returns do |path:, value:, &provider|
+      returns do |path:, value:, expires_in:, &provider|
         raise ArgumentError unless value.nil? ^ provider.nil?
         route = @router.register path
         raise ArgumentError if !value.nil? && route.dynamic?
-        value.nil? ? _register_dynamic(route.path, provider) : _set(route.path, value)
+        value.nil? ? _register_dynamic(route.path, provider, expires_in) : _set(route.path, value)
       end
     end
     alias_method :singleton, :register
@@ -52,11 +53,37 @@ module Plumbing
       @values[path] = StaticValue.new value:
     end
 
-    private def _register_dynamic(path, provider)
+    private def _register_dynamic(path, provider, expires_in = nil)
       cache_updater = ->(query, value) do
+        displaced = @values[query.path]
         _set(query.path, value)
+        _schedule_eviction(query.path, displaced, expires_in) if expires_in
       end
       @values[path] = SelfCachingValue.new provider:, cache_updater:
+    end
+
+    # Ask the worker to evict a cached value after `expires_in` seconds. The
+    # :inline worker has no loop to deliver a later message and raises
+    # NotSupported — in that case TTL degrades to cache-forever, the same way a
+    # cache store with no expiry sweeper behaves.
+    private def _schedule_eviction(path, displaced, expires_in)
+      after(expires_in, call: :evict, path: path, restore: displaced)
+    rescue Plumbing::Actor::NotSupported
+      nil
+    end
+
+    # Delivered by the worker `expires_in` seconds after a value was cached, and
+    # serialised with every other message. Restore the resolver that caching
+    # displaced (a self-caching value, for a static singleton) so the next
+    # lookup re-resolves; when nothing was displaced (a dynamic path, whose
+    # resolver lives at the pattern key) just drop the concrete entry and let the
+    # lookup fall through to re-resolve.
+    private def _evict(path:, restore:)
+      if restore.nil?
+        @values.delete(path)
+      else
+        @values[path] = restore
+      end
     end
 
     private def _set_dynamic(path, provider)

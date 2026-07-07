@@ -74,14 +74,22 @@ await { counter.increment(by: 2) }
   messages **one at a time, in arrival order**.
 - Actors now track who called them: `current_sender` / `current_senders`.
 
-**New: Services locator** — `register`/`provide` (aliases `singleton`/`factory`):
+**New: `Provider` locator** — a path-based service locator, itself a
+`Plumbing::Actor`, with `register`/`provide` (aliases `singleton`/`factory`).
+`register`, `provide` and `get` are async messages taking keyword args; `[]` is
+the synchronous convenience (`get(path:).await`). Paths may carry `:params`
+passed to the block, and static routes win over dynamic ones on conflict.
 
 ```ruby
-Plumbing.services.register(:config, AppConfig.load)   # eager singleton
-Plumbing.services.register(:db) { Database.connect }  # lazy singleton
-Plumbing.services.create(:clock) { Time.now }         # fresh every access
-Plumbing.services[:db]
+Plumbing.services.register(path: "config", value: AppConfig.load)  # eager singleton
+Plumbing.services.register(path: "db") { Database.connect }        # lazy singleton, cached
+Plumbing.services.provide(path: "clock") { Time.now }              # fresh every access
+Plumbing.services["db"]
 ```
+
+Cached registrations accept an optional `expires_in:` (seconds) TTL — the value
+is evicted after that long and re-resolved on the next lookup (eviction is
+scheduled on the actor's worker, so it is a no-op under the `:inline` worker).
 
 ## [0.5.2] - 2024-10-08
 

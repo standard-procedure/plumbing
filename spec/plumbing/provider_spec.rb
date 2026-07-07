@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "plumbing/actor/threaded"
+
 RSpec.describe Plumbing::Provider do
   subject(:provider) { described_class.new }
 
@@ -187,6 +189,59 @@ RSpec.describe Plumbing::Provider do
     it "is a shared, memoized default registry" do
       expect(Plumbing.services).to be_a(described_class)
       expect(Plumbing.services).to be(Plumbing.services)
+    end
+  end
+
+  describe "expiring registrations (TTL)" do
+    context "with a worker that can defer (threaded)" do
+      before { Plumbing::Actor.uses :threaded }
+      after { Plumbing::Actor.uses :inline }
+
+      it "evicts a cached singleton after expires_in and re-resolves on the next access" do
+        count = 0
+        provider.register(path: "counter", expires_in: 0.1) { count += 1 }
+
+        expect(provider["counter"]).to eq 1   # resolved and cached
+        expect(provider["counter"]).to eq 1   # served from cache, not re-resolved
+
+        sleep 0.3                              # let the scheduled eviction fire
+
+        expect(provider["counter"]).to eq 2   # cache evicted, resolver re-run
+      end
+
+      it "evicts a cached dynamic value after expires_in" do
+        counts = Hash.new(0)
+        provider.register(path: "count/:key", expires_in: 0.1) { |key:| counts[key] += 1 }
+
+        expect(provider["count/a"]).to eq 1
+        expect(provider["count/a"]).to eq 1
+
+        sleep 0.3
+
+        expect(provider["count/a"]).to eq 2
+      end
+
+      it "caches forever when no expires_in is given" do
+        count = 0
+        provider.register(path: "counter") { count += 1 }
+
+        expect(provider["counter"]).to eq 1
+        sleep 0.3
+        expect(provider["counter"]).to eq 1
+      end
+    end
+
+    context "with the inline worker (cannot defer)" do
+      before { Plumbing::Actor.uses :inline }
+
+      it "does not raise and caches forever — TTL is a silent no-op" do
+        count = 0
+        expect { provider.register(path: "counter", expires_in: 0.1) { count += 1 } }.not_to raise_error
+
+        expect(provider["counter"]).to eq 1
+        sleep 0.3
+        expect(provider["counter"]).to eq 1
+      end
     end
   end
 end

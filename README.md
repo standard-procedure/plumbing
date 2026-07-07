@@ -98,6 +98,19 @@ Plumbing.services.register(path: "people/:id") { |id:| Person.find(id) }
 Plumbing.services["/people/123"]
 ```
 
+A cached registration can be given a **TTL** with `expires_in:` (seconds). After
+that long the cached value is evicted and the next lookup re-resolves through the
+block, restarting the clock — handy for singletons used in bursts that should
+release their memory once cold. Eviction is scheduled on the actor's worker, so
+it needs a worker that can defer: under the default `:inline` worker the TTL is a
+silent no-op and the value caches forever (much like a cache store with no expiry
+sweeper).
+
+```ruby
+# Re-fetched at most once every 60s; evicted in between so it can be reclaimed
+Plumbing.services.register(path: "exchange/rates", expires_in: 60) { RateApi.fetch }
+```
+
 Because `register` and `provide` are async, they return a message rather than
 raising inline. Registration errors (an ambiguous registration, a static value
 on a dynamic path) surface only when the message is awaited, so `await` if you
