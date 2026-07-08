@@ -1,7 +1,12 @@
-fix: true               
-parallel: true          
-format: progress        
+fix: true
+parallel: true
+format: progress
 default_ignores: true
+
+# Match the gemspec floor (>= 3.2) so autofixes never introduce idioms newer
+# than the oldest supported Ruby — e.g. the `it` block parameter is 3.4+ and
+# breaks the 3.2/3.3 CI legs.
+ruby_version: 3.2
 
 ignore:           
   - 'vendor/**/*'

@@ -139,7 +139,7 @@ RSpec.describe Plumbing::Provider do
 
         it "does not touch an evicted actor by default — the Provider does not own its lifecycle" do
           built = []
-          provider.register(path: "svc", expires_in: 0.1) { Plumbing::Provider.new.tap { built << it } }
+          provider.register(path: "svc", expires_in: 0.1) { Plumbing::Provider.new.tap { built << _1 } }
 
           provider["svc"]                       # resolve and cache the actor
           expect(built.size).to eq 1
@@ -151,7 +151,7 @@ RSpec.describe Plumbing::Provider do
 
         it "runs on_expiry: :stop against an evicted actor, releasing its worker" do
           built = []
-          provider.register(path: "svc", expires_in: 0.1, on_expiry: :stop) { Plumbing::Provider.new.tap { built << it } }
+          provider.register(path: "svc", expires_in: 0.1, on_expiry: :stop) { Plumbing::Provider.new.tap { built << _1 } }
 
           provider["svc"]
           expect(built.first.worker).to be_active
@@ -336,7 +336,7 @@ RSpec.describe Plumbing::Provider do
         it "runs on_expiry: :stop against each evicted nested provider" do
           built = []
           provider.register(path: "users/:user_id/docs/*", expires_in: 0.1, on_expiry: :stop) do |user_id:|
-            Plumbing::Provider.new.tap { built << it }
+            Plumbing::Provider.new.tap { built << _1 }
           end
 
           provider["users/1/docs"]      # build and cache the nested provider
