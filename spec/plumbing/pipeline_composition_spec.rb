@@ -63,6 +63,20 @@ RSpec.describe "Plumbing::Pipeline composition" do
       await { b.push(event: InfoLogged.new(id: "2")) }
       expect(names.sort).to eq(["ErrorRaised", "InfoLogged"])
     end
+
+    it "adds additional sources" do
+      a = Plumbing::Pipeline::Source.new
+      b = Plumbing::Pipeline::Source.new
+      junction = described_class.new(a)
+      names = collect(junction)
+      await { a.push(event: ErrorRaised.new(id: "1")) }
+      await { b.push(event: InfoLogged.new(id: "2")) }
+
+      junction.add source: b
+      await { a.push(event: ErrorRaised.new(id: "1")) }
+      await { b.push(event: InfoLogged.new(id: "2")) }
+      expect(names.sort).to eq(["ErrorRaised", "ErrorRaised", "InfoLogged"])
+    end
   end
 
   it "composes: Only over a Junction of two sources" do

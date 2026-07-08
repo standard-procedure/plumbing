@@ -67,25 +67,19 @@ module Plumbing
       # Emit an event (alias for #push). Returns the awaitable message.
       def <<(event) = push(event: event)
 
-      protected
-
       # Chain this pipeline to a source: observe the source and re-emit each
       # event for which the predicate block returns true. Used by the
       # Only/Except/Filter/Junction composition classes.
-      def chain(source, &predicate)
+      protected def chain(source, &predicate)
         source.observe { |event| push(event: event) if predicate.call(event) }
         self
       end
 
-      private
-
       # Does `name` match any of the string filters? A trailing `*` is a prefix
       # wildcard ("Error*" matches "ErrorRaised").
-      def wildcard_match?(filters, name)
-        filters.any? { |filter| filter.end_with?("*") ? name.start_with?(filter[0..-2]) : name == filter }
-      end
+      private def wildcard_match?(filters, name) = filters.any? { |filter| filter.end_with?("*") ? name.start_with?(filter[0..-2]) : name == filter }
 
-      def enqueue(event, debounce)
+      private def enqueue(event, debounce)
         @queue << event if !debounce || @seen.add?(event)
       end
 
@@ -93,7 +87,7 @@ module Plumbing
       # order. A re-entrant push (an observer that pushes) just enqueues — the
       # outermost drain owns the loop and the cleanup. `@seen` spans the whole
       # cycle, so duplicates coalesce across re-entrant pushes too.
-      def drain
+      private def drain
         return if @draining
         @draining = true
         begin

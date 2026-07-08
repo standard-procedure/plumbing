@@ -8,7 +8,15 @@ module Plumbing
     class Junction < Base
       def initialize(*sources)
         super()
-        sources.each { |source| chain(source) { true } }
+        sources.each { |source| _add(source:) }
+      end
+
+      async :add do
+        param :source, _Interface(:observe)
+
+        returns do |source:|
+          chain(source) { true }
+        end
       end
     end
   end
