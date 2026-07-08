@@ -1,42 +1,36 @@
 # frozen_string_literal: true
 
-require "literal"
 require_relative "actor"
 require_relative "event"
 require_relative "pipeline"
 require_relative "observable"
-require_relative "operation/errors"
-require_relative "operation/transition"
-require_relative "operation/wait_options"
-require_relative "operation/state"
-require_relative "operation/events"
-require_relative "operation/dsl"
-require_relative "operation/mermaid"
 
 module Plumbing
   # Base class for operations. Subclass it and declare attributes + states
   # with the DSL. An Operation is a Plumbing::Actor.
-  class Operation
+  class Operation < Literal::Struct
+    require_relative "operation/errors"
+    require_relative "operation/transition"
+    require_relative "operation/wait_options"
+    require_relative "operation/state"
+    require_relative "operation/events"
+    require_relative "operation/dsl"
+    require_relative "operation/mermaid"
     include Plumbing::Actor
     include Plumbing::Observable
-    extend Literal::Types
     extend DSL
     extend Mermaid
 
-    def initialize(pipeline: nil)
-      super()
-      @pipeline = pipeline
-      @current_state = nil
-      @status = :pending
-      @attributes = {}
-      @exception = nil
-      @timeout_id = nil
-      @waiting_state = nil
-      @wait_generation = 0
-      @wait_started_at = nil
-      @restored_wait_elapsed = nil
-      @poll_id = nil
-    end
+    prop :current_state, _Symbol?, default: nil, writer: false
+    prop :status, Symbol, default: :pending, writer: false
+    prop :attributes, Hash, default: -> { {} }, reader: false, writer: false
+    prop :exception, _Nilable(Exception), default: nil, writer: false
+    prop :timeout_id, _Nilable(Actor::Deferral), default: nil, writer: false
+    prop :poll_id, _Nilable(Actor::Deferral), default: nil, writer: false
+    prop :waiting_state, _String?, default: nil, writer: false
+    prop :wait_generation, _Integer, default: 0, writer: false
+    prop :wait_started_at, _Float?, default: nil, writer: false
+    prop :restore_wait_elapsed, _Float?, default: nil, writer: false
 
     def attributes = @attributes.to_h
 

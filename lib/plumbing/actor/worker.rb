@@ -21,7 +21,9 @@ module Plumbing
         end
       end
 
-      # Deliver `method` to this actor after `delay` seconds. Returns a Deferral
+      def can_defer? = false
+
+      # Deliver `methodfalse
       # handle. Base raises; each worker implements its own timer.
       def after(delay, method:, sender: nil, params: {}, block: nil) = raise NotImplementedError
 

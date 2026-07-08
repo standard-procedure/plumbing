@@ -257,6 +257,107 @@ Observers subscribe from the outside; only the host emits. `Plumbing::Operation`
 is built on this — its lifecycle events (`Started`, `Transitioned`, …) are pushed
 through an `Observable` stream.
 
+### Operation
+
+A state-machine engine for multi-step processes. Subclass `Plumbing::Operation`,
+declare typed **attributes** and a graph of **states** with the class DSL. An
+Operation is itself a **Plumbing actor**, so each one advances on its own worker
+and its steps never interleave with another operation's.
+
+There are four kinds of state:
+
+- **`action`** — runs a block on entry (it may assign attributes), then follows
+  its single `.then` transition.
+- **`decision`** — picks the first `go_to` whose `if:` guard matches; a bare
+  `go_to` is the else branch. No match raises `NoDecision`.
+- **`wait`** — pauses until a guard matches, polling every `delay` seconds up to
+  a `timeout` (raising `Timeout`). Waits need a worker that can defer, so an
+  operation with any wait state raises `NotSupported` up front under the default
+  `:inline` worker — select `:async` or `:threaded`.
+- **`result`** — terminal; entering one completes the operation.
+
+Guards and action bodies run in the operation's own context, so they read and
+write attributes directly.
+
+```ruby
+class Checkout < Plumbing::Operation
+  attribute :total, Integer
+  attribute :discounted, _Nilable(Integer)
+
+  starts_with :check
+  decision :check do
+    go_to :apply_discount, "over £100", if: -> { total > 100 }
+    go_to :done, "full price"
+  end
+  action(:apply_discount) { self.discounted = (total * 0.9).to_i }.then :done
+  result :done
+end
+
+op = Checkout.call(total: 150)
+op.completed?      # => true
+op.current_state   # => :done
+op.discounted      # => 135
+```
+
+Start one with `.call(**attributes)`. Inspect it with `current_state`,
+`in?(:state)`, `completed?`, `failed?`, `exception` and `attributes`. If a step
+raises, the operation moves to `failed?` and captures the `exception` rather
+than blowing up the caller. `.test(:state, **attrs)` starts partway through the
+graph, which is handy in specs.
+
+**Waits and interactions** (async/threaded worker). A `wait_until` polls its
+guard; class-level `delay` / `timeout` set the defaults (10s / 24h) and each
+wait can override them. An `interaction` is an external message, valid only in a
+given state (`InvalidState` otherwise), that pokes a waiting operation — e.g. to
+supply the input it's blocked on — and wakes it immediately instead of at the
+next poll.
+
+```ruby
+require "plumbing/actor/async"
+Plumbing::Actor.uses :async
+
+class Registration < Plumbing::Operation
+  attribute :name, _Nilable(String)
+  delay 0.05
+  timeout 5.0
+
+  starts_with :await_name
+  wait_until(:await_name) { go_to :greet, "named", if: -> { !name.nil? } }
+  action(:greet) { self.name = "Hello #{name}" }.then :done
+  result :done
+
+  interaction(:provide_name) { |value| self.name = value }.when :await_name
+end
+
+op = Registration.call            # parks in :await_name
+op.provide_name("Cher")           # wakes it → completes
+```
+
+Because a wait can span a long time, an operation can be **persisted and
+resumed**: observe its lifecycle events for a durable record, then rebuild it
+later with `.restore(state:, wait_elapsed:, **attributes)`.
+
+**Events.** Every checkpoint pushes a lifecycle event through the operation's
+`Observable` stream — `Started`, `Transitioned`, `Waiting`, `Completed`,
+`Failed` — each carrying the operation id, state, and a full attributes
+snapshot (enough for an observer to upsert into a store). Pass a `pipeline:` at
+construction to capture them:
+
+```ruby
+events = Plumbing::Pipeline::Source.new
+events.observe { |event| persist(event) }
+Checkout.call(pipeline: events, total: 150)
+```
+
+**Diagrams, both ways.** `YourOperation.to_mermaid` renders the state graph as a
+mermaid `flowchart TD` — action/decision/wait/result each get their own node
+shape and transitions become labelled edges. The inverse is an opt-in authoring
+tool: `require "plumbing/operation/generator"`, then
+`Plumbing::Operation::Generator.from_mermaid(diagram, class_name: "YourOperation")`
+turns a flowchart back into an Operation skeleton (guard and action bodies
+stubbed with `raise NotImplementedError`), so a diagram can be the source of
+truth for the shape of a process.
+
 ## Installation
 
 ```sh

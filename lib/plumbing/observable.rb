@@ -15,7 +15,7 @@ module Plumbing
   module Observable
     # Register an observer block. Returns the awaitable that yields the observer
     # proc (hand that proc to #remove later).
-    def observe(&observer) = _pipeline.observe(&observer)
+    def observe(&observer) = pipeline.observe(&observer)
 
     # Deregister a previously-registered observer proc.
     def remove(observer) = @pipeline&.remove(observer: observer)
@@ -31,11 +31,11 @@ module Plumbing
 
     # The internal pipeline, created on first observe. Left nil until something
     # observes, so an unobserved host stays cheap and emits nowhere.
-    private def _pipeline = @pipeline ||= Plumbing::Pipeline::Source.new
+    private def pipeline = @pipeline ||= Plumbing::Pipeline::Source.new
 
     def self.included klass
       klass.extend Literal::Properties
-      klass.prop :_pipeline, Literal::Types._Nilable(Plumbing::Pipeline::Source), reader: false, writer: false
+      klass.prop :pipeline, Literal::Types._Nilable(Plumbing::Pipeline::Source), reader: false, writer: false
     end
   end
 end

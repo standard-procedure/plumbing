@@ -33,6 +33,8 @@ module Plumbing
 
       def dispatch(message) = @queue.enqueue(message)
 
+      def can_defer? = true
+
       def after(delay, method:, sender: nil, params: {}, block: nil)
         message = build_message(method: method, sender: sender, params: params, block: block)
         deferral = Plumbing::Actor::Deferral.new
@@ -56,4 +58,6 @@ end
 
 # Opt-in worker: requiring this file registers it. Select with
 # `Plumbing::Actor.uses :async` (the app must also depend on the `async` gem).
-Plumbing::Actor.register(:async) { |actor| Plumbing::Actor::Async.new(actor: actor) }
+Plumbing::Actor.register :async, can_defer: true do |actor|
+  Plumbing::Actor::Async.new(actor: actor)
+end

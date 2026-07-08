@@ -47,7 +47,7 @@ end
 
 RSpec.describe "Plumbing::Operation wait runtime" do
   before do
-    Plumbing::Actor.register(:async) { |actor| Plumbing::Actor::Async.new(actor: actor) }
+    Plumbing::Actor.register(:async, can_defer: true) { |actor| Plumbing::Actor::Async.new(actor: actor) }
     Plumbing::Actor.uses :async
   end
 

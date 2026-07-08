@@ -22,9 +22,13 @@ module Plumbing
         name.to_sym
       end
 
-      def states = @states ||= {}
+      def states
+        @states ||= {}
+      end
 
-      def starts_with(name) = @start_state = name.to_sym
+      def starts_with(name)
+        @start_state = name.to_sym
+      end
 
       def start_state = @start_state
 
@@ -45,13 +49,21 @@ module Plumbing
         name.to_sym
       end
 
-      def delay(seconds) = @default_delay = seconds.to_f
+      def delay(seconds)
+        @default_delay = seconds.to_f
+      end
 
-      def default_delay = @default_delay ||= 10.0
+      def default_delay
+        @default_delay ||= 10.0
+      end
 
-      def timeout(seconds) = @default_timeout = seconds.to_f
+      def timeout(seconds)
+        @default_timeout = seconds.to_f
+      end
 
-      def default_timeout = @default_timeout ||= 86_400.0
+      def default_timeout
+        @default_timeout ||= 86_400.0
+      end
 
       def wait_until(name, delay: nil, timeout: nil, &block)
         builder = DecisionBuilder.new
@@ -72,11 +84,10 @@ module Plumbing
       end
 
       def has_waits? = states.each_value.any? { |state| state.kind == :wait }
+      def can_defer? = Actor.can_defer?
 
       def ensure_worker_supports_waits!
-        return unless has_waits?
-        return unless Plumbing::Actor.selected_worker_type == :inline
-        raise Plumbing::Actor::NotSupported, "#{name || "operation"} has wait states; select a non-inline worker with Plumbing::Actor.uses :async (or :threaded)"
+        raise Plumbing::Actor::NotSupported, "#{name || "operation"} has wait states; select a non-inline worker with Plumbing::Actor.uses :async (or :threaded)" if has_waits? && !can_defer?
       end
 
       def restore(state:, pipeline: nil, wait_elapsed: 0.0, **attrs)

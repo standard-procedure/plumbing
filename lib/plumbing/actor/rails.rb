@@ -19,4 +19,6 @@ end
 
 # Opt-in worker: requiring this file registers it. Select with
 # `Plumbing::Actor.uses :rails` (the app must be running inside Rails).
-Plumbing::Actor.register(:rails) { |actor| Plumbing::Actor::Rails.new(actor: actor) }
+Plumbing::Actor.register :rails, can_defer: true do |actor|
+  Plumbing::Actor::Rails.new(actor: actor)
+end

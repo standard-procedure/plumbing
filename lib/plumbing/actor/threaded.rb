@@ -35,6 +35,8 @@ module Plumbing
         @queue.push(message)
       end
 
+      def can_defer? = true
+
       def after(delay, method:, sender: nil, params: {}, block: nil)
         call
         message = build_message(method: method, sender: sender, params: params, block: block)
@@ -71,4 +73,6 @@ end
 
 # Opt-in worker: requiring this file registers it. Select with
 # `Plumbing::Actor.uses :threaded` (no extra gem needed — core Ruby threads).
-Plumbing::Actor.register(:threaded) { |actor| Plumbing::Actor::Threaded.new(actor: actor) }
+Plumbing::Actor.register :threaded, can_defer: true do |actor|
+  Plumbing::Actor::Threaded.new(actor: actor)
+end
