@@ -136,6 +136,41 @@ RSpec.describe Plumbing::Provider do
           sleep 0.3
           expect(provider["counter"]).to eq 1
         end
+
+        it "does not touch an evicted actor by default — the Provider does not own its lifecycle" do
+          built = []
+          provider.register(path: "svc", expires_in: 0.1) { Plumbing::Provider.new.tap { built << it } }
+
+          provider["svc"]                       # resolve and cache the actor
+          expect(built.size).to eq 1
+
+          sleep 0.3                              # eviction fires
+
+          expect(built.first.worker).to be_active # still running — not ours to stop
+        end
+
+        it "runs on_expiry: :stop against an evicted actor, releasing its worker" do
+          built = []
+          provider.register(path: "svc", expires_in: 0.1, on_expiry: :stop) { Plumbing::Provider.new.tap { built << it } }
+
+          provider["svc"]
+          expect(built.first.worker).to be_active
+
+          sleep 0.3
+
+          expect(built.first.worker).not_to be_active
+        end
+
+        it "runs a callable on_expiry with the evicted value" do
+          torn_down = []
+          value = Object.new
+          provider.register(path: "svc", expires_in: 0.1, on_expiry: ->(object) { torn_down << object }) { value }
+
+          provider["svc"]
+          sleep 0.3
+
+          expect(torn_down).to eq [value]
+        end
       end
 
       context "with the inline worker (cannot defer)" do
@@ -149,6 +184,14 @@ RSpec.describe Plumbing::Provider do
           sleep 0.3
           expect(provider["counter"]).to eq 1
         end
+      end
+
+      it "raises if on_expiry is given without expires_in — the hook could never fire" do
+        expect { provider.register(path: "svc", on_expiry: :stop) { Object.new }.await }.to raise_error ArgumentError
+      end
+
+      it "raises if a TTL is given for a static value — TTL requires a block provider" do
+        expect { provider.register(path: "svc", value: Object.new, expires_in: 0.1).await }.to raise_error ArgumentError
       end
     end
 
@@ -288,6 +331,20 @@ RSpec.describe Plumbing::Provider do
 
           provider["users/1/docs/whoami"]
           expect(builds).to eq 2 # cache evicted after the TTL, so rebuilt
+        end
+
+        it "runs on_expiry: :stop against each evicted nested provider" do
+          built = []
+          provider.register(path: "users/:user_id/docs/*", expires_in: 0.1, on_expiry: :stop) do |user_id:|
+            Plumbing::Provider.new.tap { built << it }
+          end
+
+          provider["users/1/docs"]      # build and cache the nested provider
+          expect(built.first.worker).to be_active
+
+          sleep 0.3
+
+          expect(built.first.worker).not_to be_active
         end
       end
     end

@@ -62,6 +62,12 @@ Plumbing::Actor.uses :async
 Actors track who called them — `current_sender` (immediate) and
 `current_senders` (the full call-chain).
 
+Call `stop` to shut an actor down — it closes the worker's queue, so any
+already-queued messages still run and then the consumer thread / async task
+exits instead of blocking forever. Whoever owns the actor's lifecycle is
+responsible for stopping it (see the Provider's `on_expiry:` below). The inline
+worker has nothing to stop, so it's a no-op there.
+
 ### Providers
 
 A parameterised object locator. `Provider` is itself a **Plumbing actor**, so
@@ -109,6 +115,22 @@ sweeper).
 ```ruby
 # Re-fetched at most once every 60s; evicted in between so it can be reclaimed
 Plumbing.services.register(path: "exchange/rates", expires_in: 60) { RateApi.fetch }
+```
+
+By default eviction just drops the cached value — the Provider does **not** touch
+its lifecycle, since the same object may be used elsewhere. If the cached value
+owns a resource that must be released on eviction (an actor's worker thread, a
+connection, a file handle), pass `on_expiry:` — a **Symbol** sent to the evicted
+value, or a **callable** that receives it. It only fires when a TTL actually
+evicts, so `on_expiry` without `expires_in` raises `ArgumentError`.
+
+```ruby
+# Build a fresh worker actor per 5-minute window; stop the old one when it's evicted
+services.register(path: "importer", expires_in: 300, on_expiry: :stop) { Importer.start }
+# `:stop` sends #stop to the actor (Plumbing::Actor exposes #stop → worker.stop)
+
+# Or run arbitrary teardown against the evicted value
+services.register(path: "pool", expires_in: 60, on_expiry: ->(p) { p.disconnect }) { Pool.open }
 ```
 
 Because `register` and `provide` are async, they return a message rather than
@@ -176,7 +198,9 @@ app["users/42/messages/latest"]   # => user 42's latest message, via the scoped 
 
 Because this is `register`, the built provider is **cached** — one per parameter
 set — and reused, so an expensive scoped provider isn't rebuilt on every lookup.
-Pass `expires_in:` to bound how long each cached provider is kept. (A static
+Pass `expires_in:` to bound how long each cached provider is kept, and
+`on_expiry:` (as above) to tear each scoped provider down when it's evicted —
+e.g. `on_expiry: :stop` to shut down the nested provider's worker. (A static
 value can't bind `:params`, so a parameterised prefix must be given a block —
 registering one with a value raises `ArgumentError`.)
 

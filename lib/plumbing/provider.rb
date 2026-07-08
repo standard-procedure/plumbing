@@ -13,15 +13,18 @@ module Plumbing
       param :path, String
       param :value, _Any?, default: nil
       param :expires_in, _Nilable(Numeric), default: nil
+      param :on_expiry, _Any?, default: nil
 
-      returns do |path:, value:, expires_in:, &provider|
+      returns do |path:, value:, expires_in:, on_expiry:, &provider|
         raise ArgumentError unless value.nil? ^ provider.nil?
+        raise ArgumentError if value && expires_in # a TTL needs a block provider to re-resolve after eviction
+        raise ArgumentError if on_expiry && expires_in.nil? # on_expiry can only fire when a TTL evicts
         route = @router.register path
         raise ArgumentError if value && route.has_params? # routes with parameters must use a block for registration
         if route.wildcard?
-          _register_wildcard(route.path, value, provider, expires_in)
+          _register_wildcard(route.path, value, provider, expires_in, on_expiry)
         elsif value.nil?
-          _register_dynamic(route.path, provider, expires_in)
+          _register_dynamic(route.path, provider, expires_in, on_expiry)
         else
           _set(route.path, value)
         end
@@ -55,11 +58,11 @@ module Plumbing
       @values[path] = StaticValue.new value:
     end
 
-    private def _register_dynamic(path, provider, expires_in = nil)
+    private def _register_dynamic(path, provider, expires_in = nil, on_expiry = nil)
       cache_updater = ->(query, value) do
         displaced = @values[query.path]
         _set(query.path, value)
-        _schedule_eviction(query.path, displaced, expires_in) if expires_in
+        _schedule_eviction(query.path, displaced, expires_in, on_expiry) if expires_in
       end
       @values[path] = SelfCachingValue.new provider:, cache_updater:
     end
@@ -68,8 +71,8 @@ module Plumbing
     # :inline worker has no loop to deliver a later message and raises
     # NotSupported — in that case TTL degrades to cache-forever, the same way a
     # cache store with no expiry sweeper behaves.
-    private def _schedule_eviction(path, displaced, expires_in)
-      after(expires_in, call: :evict, path: path, restore: displaced)
+    private def _schedule_eviction(path, displaced, expires_in, on_expiry)
+      after(expires_in, call: :evict, path: path, restore: displaced, on_expiry: on_expiry)
     rescue Plumbing::Actor::NotSupported
       nil
     end
@@ -80,12 +83,24 @@ module Plumbing
     # lookup re-resolves; when nothing was displaced (a dynamic path, whose
     # resolver lives at the pattern key) just drop the concrete entry and let the
     # lookup fall through to re-resolve.
-    private def _evict(path:, restore:)
+    private def _evict(path:, restore:, on_expiry: nil)
+      evicted = @values[path]
       if restore.nil?
         @values.delete(path)
       else
         @values[path] = restore
       end
+      _run_on_expiry(on_expiry, evicted)
+    end
+
+    # Run a registrant's on_expiry hook against the value being evicted. The
+    # cached concrete value is wrapped in a StaticValue (singleton path) or is a
+    # built Provider (wildcard path); unwrap the former. A Symbol is sent to the
+    # value (so `:stop` calls `value.stop`); a callable receives the value.
+    private def _run_on_expiry(on_expiry, evicted)
+      return if on_expiry.nil?
+      value = evicted.is_a?(StaticValue) ? evicted.value : evicted
+      on_expiry.is_a?(Symbol) ? value.public_send(on_expiry) : on_expiry.call(value)
     end
 
     private def _set_dynamic(path, provider)
@@ -96,10 +111,10 @@ module Plumbing
     # prefix. Only Providers may be mounted: a static value is checked now; a
     # block is checked when it resolves (see CachingWildcard). A block form
     # caches the provider it builds (per parameter set), honouring `expires_in`.
-    private def _register_wildcard(path, value, provider, expires_in)
+    private def _register_wildcard(path, value, provider, expires_in, on_expiry = nil)
       if value.nil?
         cache = {}
-        on_cache = expires_in ? ->(params) { _schedule_wildcard_eviction(cache, params, expires_in) } : ->(_params) {}
+        on_cache = expires_in ? ->(params) { _schedule_wildcard_eviction(cache, params, expires_in, on_expiry) } : ->(_params) {}
         @values[path] = CachingWildcard.new(provider:, cache:, on_cache:)
       else
         raise ArgumentError unless value.is_a?(Plumbing::Provider)
@@ -110,14 +125,15 @@ module Plumbing
     # Schedule eviction of one cached parameter-set from a wildcard's cache. As
     # with singleton TTLs, the :inline worker can't defer, so TTL degrades to
     # cache-forever.
-    private def _schedule_wildcard_eviction(cache, params, expires_in)
-      after(expires_in, call: :evict_wildcard, cache: cache, key: params)
+    private def _schedule_wildcard_eviction(cache, params, expires_in, on_expiry)
+      after(expires_in, call: :evict_wildcard, cache: cache, key: params, on_expiry: on_expiry)
     rescue Plumbing::Actor::NotSupported
       nil
     end
 
-    private def _evict_wildcard(cache:, key:)
-      cache.delete(key)
+    private def _evict_wildcard(cache:, key:, on_expiry: nil)
+      evicted = cache.delete(key)
+      _run_on_expiry(on_expiry, evicted)
     end
 
     private def _value_for(query)

@@ -13,6 +13,26 @@ Internally, `Router`'s `DynamicRoute` and `WildcardRoute` now share a
 `SegmentedRoute` base (segment / param / static extraction), and wildcard
 matching resolves ties by preferring the longer, more-static prefix.
 
+**Eviction lifecycle hook (`on_expiry:`).** A TTL registration can now release
+whatever it cached when the value is evicted. Pass `on_expiry:` to `register` —
+a **Symbol** sent to the evicted value, or a **callable** that receives it:
+
+```ruby
+services.register(path: "importer", expires_in: 300, on_expiry: :stop) { Importer.start }
+services.register(path: "pool", expires_in: 60, on_expiry: ->(p) { p.disconnect }) { Pool.open }
+```
+
+Without it, eviction just drops the value (unchanged) — the Provider does not
+touch a value's lifecycle by default, since it may be shared. It fires for both
+singleton and wildcard TTL registrations, on each eviction. `on_expiry` without
+`expires_in` raises `ArgumentError` (it could never fire), and — now enforced —
+so does `expires_in` on a static `value:` (a TTL needs a block to re-resolve).
+
+Relatedly, **`Plumbing::Actor` now exposes a public `#stop`** (delegating to
+`worker.stop`) so an actor can be shut down without reaching into its worker —
+this is what `on_expiry: :stop` sends. Previously a cached actor evicted by a
+TTL leaked its worker thread / async task, because nothing closed its queue.
+
 ## [1.0.0] - 2026-07-07 — v1 rewrite
 
 A ground-up rewrite. Plumbing is now a small, [`literal`](https://github.com/joeldrapper/literal)-based

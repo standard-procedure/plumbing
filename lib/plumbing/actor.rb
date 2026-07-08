@@ -34,6 +34,13 @@ module Plumbing
     # Cancel a deferral returned by #after.
     def cancel_deferred(deferral) = worker.cancel_deferred(deferral)
 
+    # Shut this actor down by closing its worker's queue: any already-queued
+    # messages still run, then the consumer thread / async task exits rather
+    # than blocking forever. Whoever owns the actor's lifecycle calls this; the
+    # inline worker has nothing to stop, so it's a no-op there. An actor that
+    # defines its own async `:stop` message shadows this method.
+    def stop = worker.stop
+
     def self.included klass
       klass.extend Definitions
       klass.extend Literal::Properties

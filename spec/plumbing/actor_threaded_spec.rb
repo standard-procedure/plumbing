@@ -75,4 +75,13 @@ RSpec.describe Plumbing::Actor::Threaded do
     sender = greeter.new
     expect(inner.who(sender: sender).await).to be(sender)
   end
+
+  it "stops its worker when sent #stop" do
+    actor = greeter.new
+    expect(actor.worker).to be_active
+
+    actor.stop
+
+    expect(actor.worker).not_to be_active
+  end
 end
