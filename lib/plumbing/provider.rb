@@ -1,18 +1,13 @@
 # frozen_string_literal: true
 
 module Plumbing
-  class Provider
-    include Literal::Types
-    include Plumbing::Actor
-
+  class Provider < Literal::Struct
     require_relative "provider/router"
 
-    def initialize
-      super
-      @values = {}
-      @router = Router.new
-      @lock = Mutex.new
-    end
+    include Plumbing::Actor
+
+    prop :values, Hash, default: -> { {} }, reader: :private, writer: false
+    prop :router, Plumbing::Provider::Router, default: -> { Router.new }, reader: :private, writer: false
 
     async :register do
       param :path, String

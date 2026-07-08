@@ -23,16 +23,19 @@ module Plumbing
     # Deregister every observer.
     def remove_all = @pipeline&.remove_all
 
-    private
-
     # Emit an event object to the observers.
-    def push(event) = @pipeline&.push(event: event)
+    private def push(event) = @pipeline&.push(event: event)
 
     # Build a registered event from its type name and emit it.
-    def notify(event_type, **params) = @pipeline&.notify(event_type: event_type, params: params)
+    private def notify(event_type, **params) = @pipeline&.notify(event_type: event_type, params: params)
 
     # The internal pipeline, created on first observe. Left nil until something
     # observes, so an unobserved host stays cheap and emits nowhere.
-    def _pipeline = @pipeline ||= Plumbing::Pipeline::Source.new
+    private def _pipeline = @pipeline ||= Plumbing::Pipeline::Source.new
+
+    def self.included klass
+      klass.extend Literal::Properties
+      klass.prop :_pipeline, Literal::Types._Nilable(Plumbing::Pipeline::Source), reader: false, writer: false
+    end
   end
 end

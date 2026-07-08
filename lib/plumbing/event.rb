@@ -6,5 +6,6 @@ module Plumbing
   # and hashes on its properties, equal events are interchangeable and can be
   # used as Set keys (which is how the pipeline debounces duplicates).
   class Event < Literal::Data
+    prop :event_type, String, default: -> { self.class.name }
   end
 end

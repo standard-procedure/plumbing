@@ -7,11 +7,9 @@ module Plumbing
     # flag itself is race-safe; a cancel landing in the tiny window after the
     # check still lets one (benign, in-order) message through — the operation
     # layer's generation token discards such a stale fire.
-    class Deferral
-      def initialize
-        @lock = Mutex.new
-        @cancelled = false
-      end
+    class Deferral < Literal::Struct
+      prop :lock, Mutex, default: -> { Mutex.new }, reader: :private, writer: false
+      prop :cancelled, _Boolean, default: -> { false }, reader: :private, writer: false
 
       def cancel = @lock.synchronize { @cancelled = true }
 

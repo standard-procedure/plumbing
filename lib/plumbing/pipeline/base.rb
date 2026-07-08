@@ -8,16 +8,13 @@ module Plumbing
     # Abstract base for all pipelines. A pipeline is an actor, so its observer
     # list and event queue are safe under the concurrent workers. Observers are
     # procs, each called with every emitted event.
-    class Base
+    class Base < Literal::Struct
       include Plumbing::Actor
 
-      def initialize
-        super
-        @observers = []
-        @queue = []
-        @seen = Set.new
-        @draining = false
-      end
+      prop :observers, _Array(_Callable), default: -> { [] }, reader: :private, writer: false
+      prop :queue, _Array(Plumbing::Event), default: -> { [] }, reader: :private, writer: false
+      prop :seen, Set, default: -> { Set.new }, reader: :private, writer: false
+      prop :draining, _Boolean, default: -> { false }, reader: :private, writer: false
 
       # Register an observer (passed as a block). Returns the proc so it can be
       # handed to #remove later.

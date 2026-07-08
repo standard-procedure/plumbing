@@ -2,7 +2,7 @@
 
 module Plumbing
   module Actor
-    class Message < Literal::Object
+    class Message < Literal::Struct
       include Plumbing::Awaitable
 
       prop :actor, Actor, writer: false

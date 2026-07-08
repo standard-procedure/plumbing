@@ -48,9 +48,7 @@ module Plumbing
 
       def message_class = Plumbing::Actor::Threaded::Message
 
-      private
-
-      def run_loop
+      private def run_loop
         while (message = @queue.pop)
           message.deliver
         end

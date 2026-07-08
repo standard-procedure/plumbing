@@ -14,12 +14,6 @@ module Plumbing
     # (e.g. deferring a message on the inline worker).
     NotSupported = Class.new(StandardError)
 
-    def initialize(...)
-      super
-      @worker = Plumbing::Actor.worker_for self
-    end
-    attr_reader :worker
-
     # The actor that sent the message currently being processed (the top of the
     # sender stack), or nil. Set per-message by Message#deliver via a fiber-local
     # stack — safe under the Async worker because each delivery runs in its own
@@ -42,6 +36,8 @@ module Plumbing
 
     def self.included klass
       klass.extend Definitions
+      klass.extend Literal::Properties
+      klass.prop :worker, Plumbing::Actor::Worker, default: -> { Plumbing::Actor.worker_for self }, reader: :public, writer: false
     end
   end
 end

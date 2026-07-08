@@ -8,9 +8,7 @@ module Plumbing
     # Rails executor, so ActiveRecord connections and code reloading are managed
     # correctly per message. Requires a booted Rails app at runtime.
     class Rails < Threaded
-      private
-
-      def run_loop
+      private def run_loop
         while (message = @queue.pop)
           ::Rails.application.executor.wrap { message.deliver }
         end
