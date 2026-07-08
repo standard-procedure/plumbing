@@ -129,6 +129,25 @@ RSpec.describe Plumbing::Provider::Router do
     end
   end
 
+  describe "wildcard routes" do
+    it "matches a parameterised prefix and captures the params and remainder" do
+      route = router.register "users/:user_id/messages/*"
+      query = router.query "users/42/messages/inbox/5"
+
+      expect(query.route).to eq route
+      expect(query.params).to eq({user_id: "42"})
+      expect(query.remainder).to eq "inbox/5"
+    end
+
+    it "prefers the wildcard prefix with the most static segments" do
+      generic = router.register "users/:user_id/*"
+      specific = router.register "users/me/*"
+
+      expect(router.query("users/me/x").route).to eq specific
+      expect(router.query("users/42/x").route).to eq generic
+    end
+  end
+
   describe "querys" do
     it "generates a key from the provided route" do
       route = Plumbing::Provider::Router::DynamicRoute.new(path: "first/second/:third/:fourth")

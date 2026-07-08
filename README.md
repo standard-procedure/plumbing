@@ -162,6 +162,24 @@ app["users"]      # => the `users` provider itself
 app["users/me"]   # => Current.user  (delegates "me" to the nested provider)
 ```
 
+The prefix may contain `:params`. They're captured and passed to the
+registration block, so it can build a provider **scoped** to them — e.g. a
+nested provider that only exposes what a given user may see:
+
+```ruby
+app.register(path: "users/:user_id/messages/*") do |user_id:|
+  MessagesFor.new(user: User.find(user_id))   # a Provider scoped to that user
+end
+
+app["users/42/messages/latest"]   # => user 42's latest message, via the scoped provider
+```
+
+Because this is `register`, the built provider is **cached** — one per parameter
+set — and reused, so an expensive scoped provider isn't rebuilt on every lookup.
+Pass `expires_in:` to bound how long each cached provider is kept. (A static
+value can't bind `:params`, so a parameterised prefix must be given a block —
+registering one with a value raises `ArgumentError`.)
+
 Paths are automatically stripped of leading and trailing slashes.  
 
 Use the global `Plumbing.services`, or build and manage your own registry instances independently.

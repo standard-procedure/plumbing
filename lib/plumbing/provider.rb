@@ -22,12 +22,12 @@ module Plumbing
       returns do |path:, value:, expires_in:, &provider|
         raise ArgumentError unless value.nil? ^ provider.nil?
         route = @router.register path
+        raise ArgumentError if value && route.has_params? # routes with parameters must use a block for registration
         if route.wildcard?
-          _register_wildcard(route.path, value, provider)
+          _register_wildcard(route.path, value, provider, expires_in)
         elsif value.nil?
           _register_dynamic(route.path, provider, expires_in)
         else
-          raise ArgumentError if route.dynamic?
           _set(route.path, value)
         end
       end
@@ -38,6 +38,7 @@ module Plumbing
       param :path, String
 
       returns do |path:, &provider|
+        raise ArgumentError if provider.nil? # must use a block for providing an object
         route = @router.register path
         _set_dynamic(route.path, provider)
       end
@@ -98,14 +99,30 @@ module Plumbing
 
     # A wildcard registration ("some/path/*") mounts a nested Provider at the
     # prefix. Only Providers may be mounted: a static value is checked now; a
-    # block is checked when it resolves (see DynamicWildcard).
-    private def _register_wildcard(path, value, provider)
+    # block is checked when it resolves (see CachingWildcard). A block form
+    # caches the provider it builds (per parameter set), honouring `expires_in`.
+    private def _register_wildcard(path, value, provider, expires_in)
       if value.nil?
-        @values[path] = DynamicWildcard.new provider:
+        cache = {}
+        on_cache = expires_in ? ->(params) { _schedule_wildcard_eviction(cache, params, expires_in) } : ->(_params) {}
+        @values[path] = CachingWildcard.new(provider:, cache:, on_cache:)
       else
         raise ArgumentError unless value.is_a?(Plumbing::Provider)
         @values[path] = StaticWildcard.new nested: value
       end
+    end
+
+    # Schedule eviction of one cached parameter-set from a wildcard's cache. As
+    # with singleton TTLs, the :inline worker can't defer, so TTL degrades to
+    # cache-forever.
+    private def _schedule_wildcard_eviction(cache, params, expires_in)
+      after(expires_in, call: :evict_wildcard, cache: cache, key: params)
+    rescue Plumbing::Actor::NotSupported
+      nil
+    end
+
+    private def _evict_wildcard(cache:, key:)
+      cache.delete(key)
     end
 
     private def _value_for(query)
@@ -145,17 +162,35 @@ module Plumbing
     private_constant :StaticWildcard
 
     # As StaticWildcard, but the nested Provider is produced on demand by a
-    # block. Because the block's result is only known when it runs, the
-    # Provider constraint is enforced here rather than at registration.
-    class DynamicWildcard < Literal::Data
+    # block, which receives the prefix's captured params (so it can build a
+    # provider scoped to them). Because this is `register`, the built provider is
+    # cached — one per parameter set — and reused; `on_cache` lets the owning
+    # Provider schedule TTL eviction for a freshly-cached entry. The Provider
+    # constraint is enforced on build, since the block's result is only known
+    # when it runs.
+    #
+    # `cache` is a mutable Hash held (not reassigned) by this frozen value; all
+    # access is serialised by the owning Provider actor.
+    class CachingWildcard < Literal::Data
       prop :provider, _Callable
+      prop :cache, _Any, default: -> { {} }
+      prop :on_cache, _Callable, default: -> { ->(_params) {} }
+
       def get(query)
-        nested = @provider.call
-        raise ArgumentError unless nested.is_a?(Plumbing::Provider)
+        nested = _nested_for(query)
         query.remainder.empty? ? nested : nested[query.remainder]
       end
+
+      def _nested_for(query)
+        return @cache[query.params] if @cache.key?(query.params)
+        @provider.call(**query.params).tap do |built|
+          raise ArgumentError unless built.is_a?(Plumbing::Provider)
+          @cache[query.params] = built
+          @on_cache.call(query.params)
+        end
+      end
     end
-    private_constant :DynamicWildcard
+    private_constant :CachingWildcard
   end
 
   def self.services

@@ -196,6 +196,100 @@ RSpec.describe Plumbing::Provider do
 
         expect(provider["other/say/hello"]).to eq "olleh"
       end
+
+      it "caches the on-demand provider so the block runs once" do
+        builds = 0
+        provider.register(path: "shared/*") do
+          builds += 1
+          inner = Plumbing::Provider.new
+          inner.register(path: "x", value: "X")
+          inner
+        end
+
+        expect(provider["shared/x"]).to eq "X"
+        expect(provider["shared/x"]).to eq "X"
+        expect(builds).to eq 1
+      end
+    end
+
+    context "given a parameterised wildcard path" do
+      it "passes the captured params to the registration block" do
+        provider.register(path: "users/:user_id/messages/*") do |user_id:|
+          inner = Plumbing::Provider.new
+          inner.register(path: "latest", value: "message for #{user_id}")
+          inner
+        end
+
+        expect(provider["users/42/messages/latest"]).to eq "message for 42"
+      end
+
+      it "returns the built provider at the bare parameterised prefix" do
+        provider.register(path: "users/:user_id/messages/*") do |user_id:|
+          inner = Plumbing::Provider.new
+          inner.register(path: "self", value: user_id)
+          inner
+        end
+
+        expect(provider["users/7/messages"]["self"]).to eq "7"
+      end
+
+      it "builds a differently-scoped provider per parameter value" do
+        provider.register(path: "users/:user_id/docs/*") do |user_id:|
+          inner = Plumbing::Provider.new
+          inner.register(path: "whoami", value: user_id)
+          inner
+        end
+
+        expect(provider["users/1/docs/whoami"]).to eq "1"
+        expect(provider["users/2/docs/whoami"]).to eq "2"
+      end
+
+      it "caches one nested provider per parameter set" do
+        builds = 0
+        provider.register(path: "users/:user_id/docs/*") do |user_id:|
+          builds += 1
+          inner = Plumbing::Provider.new
+          inner.register(path: "whoami", value: user_id)
+          inner
+        end
+
+        provider["users/1/docs/whoami"]
+        provider["users/1/docs/whoami"]
+        expect(builds).to eq 1 # same param set → built once
+
+        provider["users/2/docs/whoami"]
+        expect(builds).to eq 2 # different param set → built again
+      end
+
+      it "rejects a static value under a parameterised wildcard" do
+        other = Plumbing::Provider.new
+
+        expect { provider.register(path: "users/:user_id/messages/*", value: other).await }.to raise_error ArgumentError
+      end
+
+      context "with a worker that can defer (threaded)" do
+        before { Plumbing::Actor.uses :threaded }
+        after { Plumbing::Actor.uses :inline }
+
+        it "evicts and rebuilds the cached nested provider after expires_in" do
+          builds = 0
+          provider.register(path: "users/:user_id/docs/*", expires_in: 0.1) do |user_id:|
+            builds += 1
+            inner = Plumbing::Provider.new
+            inner.register(path: "whoami", value: user_id)
+            inner
+          end
+
+          provider["users/1/docs/whoami"]
+          provider["users/1/docs/whoami"]
+          expect(builds).to eq 1
+
+          sleep 0.3
+
+          provider["users/1/docs/whoami"]
+          expect(builds).to eq 2 # cache evicted after the TTL, so rebuilt
+        end
+      end
     end
   end
 

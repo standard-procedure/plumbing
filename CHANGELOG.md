@@ -1,3 +1,18 @@
+## [1.1.0] - 2026-07-08
+
+**Parameterised wildcard providers.** A wildcard mount prefix may now carry
+`:params` — `register(path: "users/:user_id/messages/*") { |user_id:| … }`. The
+captured params are passed to the registration block so it can build a nested
+provider **scoped** to them (e.g. one that only exposes a given user's records).
+The built provider is **cached** per parameter set and reused (so an expensive
+scoped provider isn't rebuilt on every lookup), honouring `expires_in`. A static
+value can't bind `:params`, so registering one under a parameterised prefix
+raises `ArgumentError`.
+
+Internally, `Router`'s `DynamicRoute` and `WildcardRoute` now share a
+`SegmentedRoute` base (segment / param / static extraction), and wildcard
+matching resolves ties by preferring the longer, more-static prefix.
+
 ## [1.0.0] - 2026-07-07 — v1 rewrite
 
 A ground-up rewrite. Plumbing is now a small, [`literal`](https://github.com/joeldrapper/literal)-based
