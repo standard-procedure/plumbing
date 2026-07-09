@@ -34,6 +34,7 @@ module Plumbing
     # Cancel a deferral returned by #after.
     def cancel_deferred(deferral) = worker.cancel_deferred(deferral)
 
+    def start = worker.start
     # Shut this actor down by closing its worker's queue: any already-queued
     # messages still run, then the consumer thread / async task exits rather
     # than blocking forever. Whoever owns the actor's lifecycle calls this; the
@@ -45,6 +46,12 @@ module Plumbing
       klass.extend Definitions
       klass.extend Literal::Properties
       klass.prop :worker, Plumbing::Actor::Worker, default: -> { Plumbing::Actor.worker_for self }, reader: :public, writer: false
+    end
+
+    def self.start(*)
+      new(*).tap do |actor|
+        actor.start
+      end
     end
   end
 end
