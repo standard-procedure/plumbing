@@ -16,18 +16,9 @@ require_relative "plumbing/version"
 require_relative "plumbing/types"
 require_relative "plumbing/object"
 require_relative "plumbing/actor"
+require_relative "plumbing/kernel"
 require_relative "plumbing/provider"
 require_relative "plumbing/event"
 require_relative "plumbing/pipeline"
 require_relative "plumbing/observable"
 require "timeout"
-
-module Kernel
-  def Await(duration = 60, &block)
-    result = block.call
-    Timeout.timeout(duration) do
-      result.is_a?(Plumbing::Awaitable) ? result.await : result
-    end
-  end
-  alias_method :await, :Await
-end
