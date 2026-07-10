@@ -8,8 +8,8 @@ module Plumbing
     class Worker < Literal::Data
       prop :actor, Plumbing::Actor
 
-      def call = raise NotImplementedError
-      alias_method :start, :call
+      def start = raise NotImplementedError
+      def call = start
 
       def stop = raise NotImplementedError
 

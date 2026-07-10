@@ -14,7 +14,7 @@ module Plumbing
       async :add do
         param :source, _Interface(:observe)
 
-        returns do |source:|
+        calls do |source:|
           chain(source) { true }
         end
       end

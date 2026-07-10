@@ -31,7 +31,7 @@ RSpec.describe Plumbing::Actor::Rails do
 
       async :greet do
         param :name, String
-        returns { |name:| "Hello #{name}" }
+        calls { |name:| "Hello #{name}" }
       end
     end
   end
@@ -40,7 +40,7 @@ RSpec.describe Plumbing::Actor::Rails do
     expect(greeter.new.worker).to be_a(Plumbing::Actor::Rails)
   end
 
-  it "delivers and returns the result via await" do
+  it "delivers and calls the result via await" do
     expect(greeter.new.greet(name: "Cher").await).to eq "Hello Cher"
   end
 
@@ -62,9 +62,9 @@ RSpec.describe Plumbing::Actor::Rails do
 
       async :record do
         param :n, Integer
-        returns { |n:| @order << n }
+        calls { |n:| @order << n }
       end
-      async(:order) { returns { @order.dup } }
+      async(:order) { calls { @order.dup } }
     end.new
     (1..20).map { |n| recorder.record(n: n) }.each(&:await)
     expect(recorder.order.await).to eq((1..20).to_a)

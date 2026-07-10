@@ -20,11 +20,10 @@ module Plumbing
       prop :lock, _Any?, default: -> { Mutex.new }
       prop :runner, _Any?, default: -> { [] }
 
-      def call
+      def start
         @lock.synchronize { @runner << Thread.new { run_loop } if @runner.empty? }
         self
       end
-      alias_method :start, :call
 
       def stop = @queue.close
 

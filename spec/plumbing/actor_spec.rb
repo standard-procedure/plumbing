@@ -38,7 +38,7 @@ RSpec.describe Plumbing::Actor do
         include Plumbing::Actor
 
         async :say_hello do
-          returns { "Hello" }
+          calls { "Hello" }
         end
       end
 
@@ -52,7 +52,7 @@ RSpec.describe Plumbing::Actor do
         include Plumbing::Actor
 
         async :say_hello do
-          returns { "Hello" }
+          calls { "Hello" }
         end
       end
 
@@ -66,7 +66,7 @@ RSpec.describe Plumbing::Actor do
         include Plumbing::Actor
 
         async :say_hello do
-          returns { "Hello" }
+          calls { "Hello" }
         end
       end
 
@@ -81,7 +81,7 @@ RSpec.describe Plumbing::Actor do
         include Plumbing::Actor
 
         async :say_something do
-          returns do |&block|
+          calls do |&block|
             "I am speaking #{block.call}"
           end
         end
@@ -91,6 +91,30 @@ RSpec.describe Plumbing::Actor do
       message = instance.say_something { "in a block" }
       message.deliver
       expect(message.result).to eq "I am speaking in a block"
+    end
+  end
+
+  describe "starting" do
+    it "builds a new actor and starts it automatically" do
+      Plumbing::Actor.uses :inline
+
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        prop :started, _Boolean, default: false, reader: :public
+        prop :name, String, reader: :public
+
+        def before_start
+          @started = true
+        end
+      end
+
+      puts Plumbing::Actor.selected_worker_type
+
+      test = test_class.start name: "Alice"
+
+      expect(test.name).to eq "Alice"
+      expect(test.started).to be true
     end
   end
 end

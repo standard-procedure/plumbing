@@ -33,7 +33,7 @@ module Plumbing
       def async name, &config
         method = MethodDefinition.new(name: name.to_sym)
         method.instance_eval(&config)
-        raise ArgumentError, "async :#{name} requires a `returns { ... }` block" if method.implementation.nil?
+        raise ArgumentError, "async :#{name} requires a `calls { ... }` block" if method.implementation.nil?
 
         # external async method
         define_method name.to_sym do |sender: nil, **params, &block|
@@ -61,7 +61,7 @@ module Plumbing
           params_class.prop(name, type, *rest, **opts)
         end
 
-        def returns(&implementation)
+        def calls(&implementation)
           @implementation = implementation
         end
       end

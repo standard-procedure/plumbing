@@ -10,7 +10,7 @@ RSpec.describe Plumbing::Actor::Inline do
       klass = Class.new do
         include Plumbing::Actor
 
-        async(:noop) { returns { :ok } }
+        async(:noop) { calls { :ok } }
       end
       expect(klass.new.worker).to be_a(Plumbing::Actor::Inline)
     end
@@ -23,12 +23,12 @@ RSpec.describe Plumbing::Actor::Inline do
 
         async :greet do
           param :name, String
-          returns { |name:| "Hello #{name}" }
+          calls { |name:| "Hello #{name}" }
         end
       end
     end
 
-    it "returns an Inline::Message" do
+    it "calls an Inline::Message" do
       expect(greeter.new.greet(name: "X")).to be_a(Plumbing::Actor::Inline::Message)
     end
 
@@ -55,7 +55,7 @@ RSpec.describe Plumbing::Actor::Inline do
         async :greet do
           param :name, String
           param :age, _Integer(0..120), default: 42
-          returns { |name:, age:| "#{name} is #{age}" }
+          calls { |name:, age:| "#{name} is #{age}" }
         end
       end
     end
@@ -82,7 +82,7 @@ RSpec.describe Plumbing::Actor::Inline do
       Class.new do
         include Plumbing::Actor
 
-        async(:boom) { returns { raise "Kaboom!" } }
+        async(:boom) { calls { raise "Kaboom!" } }
       end
     end
 
@@ -111,7 +111,7 @@ RSpec.describe Plumbing::Actor::Inline do
   end
 
   describe "definition errors" do
-    it "raises ArgumentError at class-load time when `returns` is omitted" do
+    it "raises ArgumentError at class-load time when `calls` is omitted" do
       expect {
         Class.new do
           include Plumbing::Actor
@@ -120,7 +120,7 @@ RSpec.describe Plumbing::Actor::Inline do
             param :name, String
           end
         end
-      }.to raise_error(ArgumentError, /requires a `returns \{ \.\.\. \}` block/)
+      }.to raise_error(ArgumentError, /requires a `calls \{ \.\.\. \}` block/)
     end
   end
 
@@ -129,7 +129,7 @@ RSpec.describe Plumbing::Actor::Inline do
       Class.new do
         include Plumbing::Actor
 
-        async(:who_sent) { returns { current_sender } }
+        async(:who_sent) { calls { current_sender } }
       end
     end
 
@@ -137,7 +137,7 @@ RSpec.describe Plumbing::Actor::Inline do
       Class.new do
         include Plumbing::Actor
 
-        async(:noop) { returns { :ok } }
+        async(:noop) { calls { :ok } }
       end
     end
 
@@ -161,7 +161,7 @@ RSpec.describe Plumbing::Actor::Inline do
         Class.new do
           include Plumbing::Actor
 
-          async(:who_sent) { returns { current_sender } }
+          async(:who_sent) { calls { current_sender } }
         end
       end
 
@@ -171,9 +171,9 @@ RSpec.describe Plumbing::Actor::Inline do
 
           async :wrap do
             param :inner, Object
-            returns do |inner:|
+            calls do |inner:|
               # Capture sender state at three points: before the nested call,
-              # what the nested call sees, and after the nested call returns.
+              # what the nested call sees, and after the nested call calls.
               before_nested = current_sender
               inner_sees = inner.who_sent(sender: self).await
               after_nested = current_sender
@@ -192,7 +192,7 @@ RSpec.describe Plumbing::Actor::Inline do
 
         expect(before).to be(caller)         # outer sees its own caller
         expect(inner_saw_outer).to be(outer) # inner sees outer (its caller)
-        expect(after).to be(caller)          # outer's view restored after inner returns
+        expect(after).to be(caller)          # outer's view restored after inner calls
       end
     end
   end
@@ -208,7 +208,7 @@ RSpec.describe Plumbing::Actor::Inline do
 
         async :greet do
           param :name, String
-          returns { |name:, &block| block&.call("Hello #{name}") }
+          calls { |name:, &block| block&.call("Hello #{name}") }
         end
       end
 
@@ -222,7 +222,7 @@ RSpec.describe Plumbing::Actor::Inline do
         include Plumbing::Actor
 
         async :probe do
-          returns { |&block| block }
+          calls { |&block| block }
         end
       end
 
@@ -235,7 +235,7 @@ RSpec.describe Plumbing::Actor::Inline do
 
         async :greet do
           param :name, String
-          returns do |name:, &block|
+          calls do |name:, &block|
             block&.call(name)
             "result:#{name}"
           end
@@ -259,7 +259,7 @@ RSpec.describe Plumbing::Actor::Inline do
 
         async :perform do
           param :payload, String
-          returns do |payload:|
+          calls do |payload:|
             current_sender&.receive_reply(text: "echo: #{payload}")
             :acked
           end
@@ -280,7 +280,7 @@ RSpec.describe Plumbing::Actor::Inline do
 
         async :start do
           param :worker, Object
-          returns do |worker:|
+          calls do |worker:|
             worker.perform(payload: "ping-1", sender: self)
             worker.perform(payload: "ping-2", sender: self)
             :dispatched
@@ -289,7 +289,7 @@ RSpec.describe Plumbing::Actor::Inline do
 
         async :receive_reply do
           param :text, String
-          returns { |text:| @replies << text }
+          calls { |text:| @replies << text }
         end
       end
     end
@@ -298,7 +298,7 @@ RSpec.describe Plumbing::Actor::Inline do
       worker = worker_class.new
       caller = caller_class.new
 
-      # Inline dispatch is synchronous, so by the time start returns, both
+      # Inline dispatch is synchronous, so by the time start calls, both
       # `perform` calls have run to completion (each one synchronously
       # firing `receive_reply` on the caller before returning).
       caller.start(worker: worker).await

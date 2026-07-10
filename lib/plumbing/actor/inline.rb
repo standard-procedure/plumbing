@@ -5,7 +5,7 @@ require_relative "worker"
 module Plumbing
   module Actor
     class Inline < Worker
-      def call = nil
+      def start = nil
       def stop = nil
 
       def after(*, **) = raise Plumbing::Actor::NotSupported, "the inline worker cannot defer messages; use :async or :threaded"

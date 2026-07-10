@@ -16,8 +16,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
       src = Plumbing::Pipeline::Source.new
       only = described_class.new(source: src, filters: ["Error*"])
       names = collect(only)
-      await { src.push(event: ErrorRaised.new(id: "1")) }
-      await { src.push(event: InfoLogged.new(id: "2")) }
+      await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
+      await { src.push(event: InfoLogged.new(source: src, id: "2")) }
       expect(names).to eq(["ErrorRaised"])
     end
 
@@ -25,8 +25,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
       src = Plumbing::Pipeline::Source.new
       only = described_class.new(source: src, filters: ["InfoLogged"])
       names = collect(only)
-      await { src.push(event: ErrorRaised.new(id: "1")) }
-      await { src.push(event: InfoLogged.new(id: "2")) }
+      await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
+      await { src.push(event: InfoLogged.new(source: src, id: "2")) }
       expect(names).to eq(["InfoLogged"])
     end
   end
@@ -36,8 +36,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
       src = Plumbing::Pipeline::Source.new
       except = described_class.new(source: src, filters: ["Error*"])
       names = collect(except)
-      await { src.push(event: ErrorRaised.new(id: "1")) }
-      await { src.push(event: InfoLogged.new(id: "2")) }
+      await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
+      await { src.push(event: InfoLogged.new(source: src, id: "2")) }
       expect(names).to eq(["InfoLogged"])
     end
   end
@@ -47,8 +47,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
       src = Plumbing::Pipeline::Source.new
       filter = described_class.new(source: src, filters: [/Error/])
       names = collect(filter)
-      await { src.push(event: ErrorRaised.new(id: "1")) }
-      await { src.push(event: InfoLogged.new(id: "2")) }
+      await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
+      await { src.push(event: InfoLogged.new(source: src, id: "2")) }
       expect(names).to eq(["ErrorRaised"])
     end
   end
@@ -59,8 +59,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
       b = Plumbing::Pipeline::Source.new
       junction = described_class.new(a, b)
       names = collect(junction)
-      await { a.push(event: ErrorRaised.new(id: "1")) }
-      await { b.push(event: InfoLogged.new(id: "2")) }
+      await { a.push(event: ErrorRaised.new(source: a, id: "1")) }
+      await { b.push(event: InfoLogged.new(source: b, id: "2")) }
       expect(names.sort).to eq(["ErrorRaised", "InfoLogged"])
     end
 
@@ -69,12 +69,12 @@ RSpec.describe "Plumbing::Pipeline composition" do
       b = Plumbing::Pipeline::Source.new
       junction = described_class.new(a)
       names = collect(junction)
-      await { a.push(event: ErrorRaised.new(id: "1")) }
-      await { b.push(event: InfoLogged.new(id: "2")) }
+      await { a.push(event: ErrorRaised.new(source: a, id: "1")) }
+      await { b.push(event: InfoLogged.new(source: b, id: "2")) }
 
       junction.add source: b
-      await { a.push(event: ErrorRaised.new(id: "1")) }
-      await { b.push(event: InfoLogged.new(id: "2")) }
+      await { a.push(event: ErrorRaised.new(source: a, id: "1")) }
+      await { b.push(event: InfoLogged.new(source: b, id: "2")) }
       expect(names.sort).to eq(["ErrorRaised", "ErrorRaised", "InfoLogged"])
     end
   end
@@ -85,9 +85,9 @@ RSpec.describe "Plumbing::Pipeline composition" do
     junction = Plumbing::Pipeline::Junction.new(a, b)
     only = Plumbing::Pipeline::Only.new(source: junction, filters: ["Error*"])
     names = collect(only)
-    await { a.push(event: ErrorRaised.new(id: "1")) }
-    await { b.push(event: InfoLogged.new(id: "2")) }
-    await { b.push(event: ErrorRaised.new(id: "3")) }
+    await { a.push(event: ErrorRaised.new(source: a, id: "1")) }
+    await { b.push(event: InfoLogged.new(source: b, id: "2")) }
+    await { b.push(event: ErrorRaised.new(source: b, id: "3")) }
     expect(names).to eq(["ErrorRaised", "ErrorRaised"])
   end
 end

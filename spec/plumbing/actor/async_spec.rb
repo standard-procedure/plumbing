@@ -21,7 +21,7 @@ RSpec.describe Plumbing::Actor::Async do
       klass = Class.new do
         include Plumbing::Actor
 
-        async(:noop) { returns { :ok } }
+        async(:noop) { calls { :ok } }
       end
       expect(klass.new.worker).to be_a(Plumbing::Actor::Async)
     end
@@ -34,12 +34,12 @@ RSpec.describe Plumbing::Actor::Async do
 
         async :greet do
           param :name, String
-          returns { |name:| "Hello #{name}" }
+          calls { |name:| "Hello #{name}" }
         end
       end
     end
 
-    it "returns an Async::Message (not yet delivered)" do
+    it "calls an Async::Message (not yet delivered)" do
       Sync do
         actor = greeter.new
         actor.worker.call
@@ -48,7 +48,7 @@ RSpec.describe Plumbing::Actor::Async do
       end
     end
 
-    it "delivers the message and returns the result via .await" do
+    it "delivers the message and calls the result via .await" do
       Sync do
         actor = greeter.new
         actor.worker.call
@@ -87,7 +87,7 @@ RSpec.describe Plumbing::Actor::Async do
 
         async :record do
           param :n, Integer
-          returns do |n:|
+          calls do |n:|
             @seen << n
             n
           end
@@ -112,7 +112,7 @@ RSpec.describe Plumbing::Actor::Async do
         async :greet do
           param :name, String
           param :age, _Integer(0..120), default: 42
-          returns { |name:, age:| "#{name} is #{age}" }
+          calls { |name:, age:| "#{name} is #{age}" }
         end
       end
     end
@@ -155,7 +155,7 @@ RSpec.describe Plumbing::Actor::Async do
       klass = Class.new do
         include Plumbing::Actor
 
-        async(:boom) { returns { raise "Kaboom!" } }
+        async(:boom) { calls { raise "Kaboom!" } }
       end
 
       Sync do
@@ -174,7 +174,7 @@ RSpec.describe Plumbing::Actor::Async do
       Class.new do
         include Plumbing::Actor
 
-        async(:who_sent) { returns { current_sender } }
+        async(:who_sent) { calls { current_sender } }
       end
     end
 
@@ -182,7 +182,7 @@ RSpec.describe Plumbing::Actor::Async do
       Class.new do
         include Plumbing::Actor
 
-        async(:noop) { returns { :ok } }
+        async(:noop) { calls { :ok } }
       end
     end
 
@@ -229,7 +229,7 @@ RSpec.describe Plumbing::Actor::Async do
 
         async :greet do
           param :name, String
-          returns { |name:, &block| block&.call("Hello #{name}") }
+          calls { |name:, &block| block&.call("Hello #{name}") }
         end
       end
 
@@ -237,7 +237,7 @@ RSpec.describe Plumbing::Actor::Async do
         actor = klass.new
         actor.worker.call
         # The implementation calls the block synchronously during deliver,
-        # so by the time .await returns, the block has run.
+        # so by the time .await calls, the block has run.
         captured = nil
         actor.greet(name: "X") { |result| captured = result }.await
         expect(captured).to eq "Hello X"
@@ -257,7 +257,7 @@ RSpec.describe Plumbing::Actor::Async do
 
         async :perform do
           param :payload, String
-          returns do |payload:|
+          calls do |payload:|
             current_sender&.receive_reply(text: "echo: #{payload}")
             :acked
           end
@@ -278,7 +278,7 @@ RSpec.describe Plumbing::Actor::Async do
 
         async :receive_reply do
           param :text, String
-          returns { |text:| @received.push(text) }
+          calls { |text:| @received.push(text) }
         end
       end
     end

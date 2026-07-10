@@ -19,24 +19,18 @@ module Plumbing
       # Register an observer (passed as a block). Returns the proc so it can be
       # handed to #remove later.
       async :observe do
-        returns { |&observer|
-          @observers << observer
-          observer
-        }
+        calls { |&observer| @observers << observer }
       end
 
       # Deregister a previously-registered observer proc.
       async :remove do
         param :observer, Proc
-        returns { |observer:| @observers.delete(observer) }
+        calls { |observer:| @observers.delete(observer) }
       end
 
       # Deregister every observer.
       async :remove_all do
-        returns {
-          @observers.clear
-          nil
-        }
+        calls { @observers.clear }
       end
 
       # Emit an event. Value-equal duplicates are debounced within a drain cycle
@@ -44,7 +38,7 @@ module Plumbing
       async :push do
         param :event, Plumbing::Event
         param :debounce, _Boolean, default: true
-        returns do |event:, debounce:|
+        calls do |event:, debounce:|
           enqueue(event, debounce)
           drain
           event
@@ -56,8 +50,8 @@ module Plumbing
         param :event_type, String
         param :debounce, _Boolean, default: true
         param :params, Hash, default: {}.freeze
-        returns do |event_type:, debounce:, params:|
-          event = Plumbing::Pipeline.event_type(event_type).new(**params)
+        calls do |event_type:, debounce:, params:|
+          event = Plumbing::Pipeline.event_type(event_type).new(**params.merge(source: self))
           enqueue(event, debounce)
           drain
           event

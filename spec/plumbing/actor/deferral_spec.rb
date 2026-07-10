@@ -21,7 +21,7 @@ RSpec.describe "Actor deferral" do
       Class.new do
         include Plumbing::Actor
 
-        async(:noop) { returns { :ok } }
+        async(:noop) { calls { :ok } }
       end
     end
 
@@ -45,8 +45,8 @@ RSpec.describe "Actor deferral" do
       Class.new do
         include Plumbing::Actor
 
-        async(:tick) { returns { @count = (@count || 0) + 1 } }
-        async(:count) { returns { @count || 0 } }
+        async(:tick) { calls { @count = (@count || 0) + 1 } }
+        async(:count) { calls { @count || 0 } }
       end
     end
 
@@ -80,8 +80,8 @@ RSpec.describe "Actor deferral" do
       Class.new do
         include Plumbing::Actor
 
-        async(:tick) { returns { @count = (@count || 0) + 1 } }
-        async(:count) { returns { @count || 0 } }
+        async(:tick) { calls { @count = (@count || 0) + 1 } }
+        async(:count) { calls { @count || 0 } }
       end
     end
 

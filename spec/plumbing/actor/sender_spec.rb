@@ -7,7 +7,7 @@ RSpec.describe "Plumbing::Actor sender stack" do
     Class.new do
       include Plumbing::Actor
 
-      async(:chain) { returns { current_senders } }
+      async(:chain) { calls { current_senders } }
     end
   end
 
@@ -17,7 +17,7 @@ RSpec.describe "Plumbing::Actor sender stack" do
 
       async :go do
         param :inner, Object
-        returns { |inner:| inner.chain(sender: self).await }
+        calls { |inner:| inner.chain(sender: self).await }
       end
     end
   end
@@ -42,7 +42,7 @@ RSpec.describe "Plumbing::Actor sender stack" do
       probe = Class.new do
         include Plumbing::Actor
 
-        async(:both) { returns { [current_sender, current_senders.last] } }
+        async(:both) { calls { [current_sender, current_senders.last] } }
       end.new
       sender = inner.new
 
@@ -58,7 +58,7 @@ RSpec.describe "Plumbing::Actor sender stack" do
       klass = Class.new do
         include Plumbing::Actor
 
-        async(:say) { returns { "hi" } }
+        async(:say) { calls { "hi" } }
       end
 
       methods = klass.instance_methods(false)

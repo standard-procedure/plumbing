@@ -18,14 +18,13 @@ module Plumbing
     class Async < Worker
       prop :queue, ::Async::Queue, default: -> { ::Async::Queue.new }
 
-      def call
+      def start
         Kernel.Async(transient: true) do
           while (message = @queue.dequeue)
             message.deliver
           end
         end
       end
-      alias_method :start, :call
 
       def stop = @queue.close
 

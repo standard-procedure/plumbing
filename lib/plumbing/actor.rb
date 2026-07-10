@@ -28,30 +28,40 @@ module Plumbing
     # Ask the worker to deliver `call` to this actor after `delay` seconds.
     # Returns a Plumbing::Actor::Deferral that can be passed to cancel_deferred.
     def after(delay, call:, sender: nil, **params, &block)
-      worker.after(delay, method: call, sender: sender, params: params, block: block)
+      @worker.after(delay, method: call, sender: sender, params: params, block: block)
     end
 
     # Cancel a deferral returned by #after.
-    def cancel_deferred(deferral) = worker.cancel_deferred(deferral)
+    def cancel_deferred(deferral) = @worker.cancel_deferred(deferral)
 
-    def start = worker.start
-    # Shut this actor down by closing its worker's queue: any already-queued
-    # messages still run, then the consumer thread / async task exits rather
-    # than blocking forever. Whoever owns the actor's lifecycle calls this; the
-    # inline worker has nothing to stop, so it's a no-op there. An actor that
-    # defines its own async `:stop` message shadows this method.
-    def stop = worker.stop
+    def start
+      before_start
+      @worker.start
+      after_start
+    end
+    alias_method :call, :start
+
+    def stop
+      before_stop
+      @worker.stop
+      after_stop
+    end
+
+    private def before_start = nil
+    private def after_start = nil
+    private def before_stop = nil
+    private def after_stop = nil
+
+    module Start
+      def start(**) = new(**).tap { |a| a.start }
+      def call(**) = start(**)
+    end
 
     def self.included klass
       klass.extend Definitions
       klass.extend Literal::Properties
       klass.prop :worker, Plumbing::Actor::Worker, default: -> { Plumbing::Actor.worker_for self }, reader: :public, writer: false
-    end
-
-    def self.start(*)
-      new(*).tap do |actor|
-        actor.start
-      end
+      klass.extend Start
     end
   end
 end

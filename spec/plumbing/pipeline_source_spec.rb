@@ -16,20 +16,20 @@ RSpec.describe Plumbing::Pipeline::Source do
   describe "push / observe" do
     it "notifies observers of pushed events" do
       received = collect(source)
-      await { source.push(event: ThingHappened.new(id: "1")) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(received.map(&:id)).to eq(["1"])
     end
 
     it "supports the << alias" do
       received = collect(source)
-      await { source << ThingHappened.new(id: "1") }
+      await { source << ThingHappened.new(source: source, id: "1") }
       expect(received.map(&:id)).to eq(["1"])
     end
 
     it "notifies every observer" do
       a = collect(source)
       b = collect(source)
-      await { source.push(event: ThingHappened.new(id: "1")) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(a.size).to eq(1)
       expect(b.size).to eq(1)
     end
@@ -40,7 +40,7 @@ RSpec.describe Plumbing::Pipeline::Source do
       received = []
       observer = await { source.observe { |e| received << e } }
       await { source.remove(observer: observer) }
-      await { source.push(event: ThingHappened.new(id: "1")) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(received).to be_empty
     end
 
@@ -48,7 +48,7 @@ RSpec.describe Plumbing::Pipeline::Source do
       a = collect(source)
       b = collect(source)
       await { source.remove_all }
-      await { source.push(event: ThingHappened.new(id: "1")) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(a).to be_empty
       expect(b).to be_empty
     end
@@ -62,10 +62,10 @@ RSpec.describe Plumbing::Pipeline::Source do
         received << event
         unless again
           again = true
-          source.push(event: ThingHappened.new(id: "1"))
+          source.push(event: ThingHappened.new(source: source, id: "1"))
         end
       end
-      await { source.push(event: ThingHappened.new(id: "1")) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(received.size).to eq(1)
     end
 
@@ -76,10 +76,10 @@ RSpec.describe Plumbing::Pipeline::Source do
         received << event
         unless again
           again = true
-          source.push(event: ThingHappened.new(id: "1"), debounce: false)
+          source.push(event: ThingHappened.new(source: source, id: "1"), debounce: false)
         end
       end
-      await { source.push(event: ThingHappened.new(id: "1")) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(received.size).to eq(2)
     end
   end
@@ -90,7 +90,7 @@ RSpec.describe Plumbing::Pipeline::Source do
     it "builds the registered event from its type name and emits it" do
       received = collect(source)
       await { source.notify(event_type: "ThingHappened", params: {id: "1"}) }
-      expect(received.first).to eq(ThingHappened.new(id: "1"))
+      expect(received.first).to eq(ThingHappened.new(source: source, id: "1"))
     end
   end
 end

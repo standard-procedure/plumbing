@@ -15,7 +15,7 @@ module Plumbing
       param :expires_in, _Nilable(Numeric), default: nil
       param :on_expiry, _Any?, default: nil
 
-      returns do |path:, value:, expires_in:, on_expiry:, &provider|
+      calls do |path:, value:, expires_in:, on_expiry:, &provider|
         raise ArgumentError unless value.nil? ^ provider.nil?
         raise ArgumentError if value && expires_in # a TTL needs a block provider to re-resolve after eviction
         raise ArgumentError if on_expiry && expires_in.nil? # on_expiry can only fire when a TTL evicts
@@ -35,7 +35,7 @@ module Plumbing
     async :provide do
       param :path, String
 
-      returns do |path:, &provider|
+      calls do |path:, &provider|
         raise ArgumentError if provider.nil? # must use a block for providing an object
         route = @router.register path
         _set_dynamic(route.path, provider)
@@ -46,7 +46,7 @@ module Plumbing
     async :get do
       param :path, String
 
-      returns do |path:|
+      calls do |path:|
         query = @router.query path
         _value_for(query).get(query)
       end
