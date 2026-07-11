@@ -31,13 +31,15 @@ module Plumbing
       #     # ALTERNATIVE SYNTAX
       #     puts await { greeting.say greeting: "Hi there" }
       def async name, &config
-        method = MethodDefinition.new(name: name.to_sym)
+        Literal.check name, Symbol
+
+        method = MethodDefinition.new(name: name)
         method.instance_eval(&config)
         raise ArgumentError, "async :#{name} requires a `calls { ... }` block" if method.implementation.nil?
 
         # external async method
-        define_method name.to_sym do |sender: nil, **params, &block|
-          worker.post name.to_sym, sender: sender, **params, &block
+        define_method name do |sender: nil, **params, &block|
+          worker.post name, sender: sender, **params, &block
         end
 
         # internal validator
@@ -47,7 +49,28 @@ module Plumbing
         end
 
         # internal implementation
-        define_method(:"_#{name}_implementation", &method.implementation)
+        define_method :"_#{name}_implementation" do |**params, &block|
+          self.class.before_callbacks.each { |c| instance_exec(name, params, &c) }
+          method.implementation.call(**params, &block).tap do |result|
+            self.class.after_callbacks.each { |c| instance_exec(name, params, result, &c) }
+          end
+        end
+      end
+
+      def before &callback
+        before_callbacks << callback
+      end
+
+      def after &callback
+        after_callbacks << callback
+      end
+
+      def before_callbacks
+        @before_callbacks ||= []
+      end
+
+      def after_callbacks
+        @after_callbacks ||= []
       end
 
       class MethodDefinition < Literal::Struct

@@ -92,6 +92,36 @@ RSpec.describe Plumbing::Actor do
       message.deliver
       expect(message.result).to eq "I am speaking in a block"
     end
+
+    it "allows for before and after callbacks" do
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        prop :before_calls, Hash, default: -> { {} }, reader: :public
+        prop :after_calls, Hash, default: -> { {} }, reader: :public
+
+        before do |method, params|
+          @before_calls[method] = params
+        end
+
+        after do |method, params, result|
+          @after_calls[method] = result
+        end
+
+        async :say_hello do
+          param :name, String
+          calls do |name:|
+            "Hello #{name}"
+          end
+        end
+      end
+
+      instance = test_class.start
+      await { instance.say_hello name: "Alice" }
+
+      expect(instance.before_calls[:say_hello]).to eq({name: "Alice"})
+      expect(instance.after_calls[:say_hello]).to eq("Hello Alice")
+    end
   end
 
   describe "starting" do
