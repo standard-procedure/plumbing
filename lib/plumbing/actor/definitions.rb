@@ -57,11 +57,11 @@ module Plumbing
         end
       end
 
-      def before &callback
+      def before_message &callback
         before_callbacks << callback
       end
 
-      def after &callback
+      def after_message &callback
         after_callbacks << callback
       end
 

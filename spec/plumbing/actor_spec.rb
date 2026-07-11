@@ -100,11 +100,11 @@ RSpec.describe Plumbing::Actor do
         prop :before_calls, Hash, default: -> { {} }, reader: :public
         prop :after_calls, Hash, default: -> { {} }, reader: :public
 
-        before do |method, params|
+        before_message do |method, params|
           @before_calls[method] = params
         end
 
-        after do |method, params, result|
+        after_message do |method, params, result|
           @after_calls[method] = result
         end
 
