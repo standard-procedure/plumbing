@@ -428,6 +428,13 @@ RSpec.describe Plumbing::Provider do
     end
   end
 
+  describe "lifecycle" do
+    it "unregisters a registered static path and fires an eviction event for the registered object"
+    it "unregisters a registered dynamic path and fires eviction events for all cached objects"
+    it "unregisters a wildcard path and an eviction event for the nested provider"
+    it "unregisters all paths and fires eviction events for all objects"
+  end
+
   describe "aliases" do
     it "exposes singleton -> register and factory -> provide" do
       expect(provider.method(:singleton).original_name).to eq(:register)

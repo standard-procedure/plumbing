@@ -1,6 +1,22 @@
 # frozen_string_literal: true
 
 module Plumbing
+  # Provider is an object locator
+  # Objects can be registered (singletons - once instance is registered and reused) or provided (factories - a new object is created every time).
+  #
+  # Registered objects can also be:
+  #   registered once
+  #   registered on-demand
+  #   If registered on-demand, an expiry time can also be set, so they are evicted from the cache after a period of time (and will be recreated on-demand)
+  #     If expiry times are used, a deferrable worker type must be used (async, threaded, rails) otherwise cache eviction will never happen
+  #     On cache eviction, you can specify a method or proc to handle cleaning up the evicted object
+  #
+  # It allows objects to be located via static, dynamic or wilcard paths
+  #   Static path - a single location to the object - eg "users/me"
+  #   Dynamic path - a path containing :parameters that are passed to the handler - eg "people/:person_id" which given "people/123" will pass a person_id: "123" to the handler
+  #   Wildcard paths - a path containing a wildcard that is then passed to a nested provider - eg "inbox/*" which given "inbox/messages/unread" passes "messages/unread" to the nested provider
+  #
+  #
   class Provider < Literal::Struct
     require_relative "provider/router"
 
@@ -42,6 +58,20 @@ module Plumbing
       end
     end
     alias_method :factory, :provide
+
+    async :remove do
+      param :path, String
+
+      calls do |path:|
+        raise "Not yet implemented"
+      end
+    end
+
+    async :remove_all do
+      calls do
+        raise "Not yet impleented"
+      end
+    end
 
     async :get do
       param :path, String
