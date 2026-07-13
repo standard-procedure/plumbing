@@ -2,18 +2,18 @@
 
 # ThingHappened is defined in spec/support/events.rb
 
-RSpec.describe Plumbing::Pipeline::Source do
+RSpec.describe Plumbing::Pipeline do
   before { Plumbing::Actor.uses :inline }
 
   let(:source) { described_class.new }
 
   def collect(pipeline)
     received = []
-    pipeline.observe { |event| received << event }
+    pipeline.add_observer { |event| received << event }
     received
   end
 
-  describe "push / observe" do
+  describe "observe and push" do
     it "notifies observers of pushed events" do
       received = collect(source)
       await { source.push(event: ThingHappened.new(source: source, id: "1")) }
@@ -35,19 +35,45 @@ RSpec.describe Plumbing::Pipeline::Source do
     end
   end
 
-  describe "remove / remove_all" do
+  describe "notify" do
+    before { Plumbing::Event.types.register(ThingHappened) }
+
+    it "builds the registered event from its type name and emits it" do
+      received = collect(source)
+
+      source.notify("ThingHappened", id: "1")
+
+      expect(received.first).to eq(ThingHappened.new(source: source, id: "1"))
+    end
+
+    it "allows the source of the new event to be overridden" do
+      alternative = Plumbing::Pipeline::Junction.new(source)
+      received = collect(source)
+
+      source.notify("ThingHappened", source: alternative, id: "1")
+
+      expect(received.first).to eq(ThingHappened.new(source: alternative, id: "1"))
+    end
+  end
+
+
+  describe "remove_observer / remove_all_observers" do
     it "removes a specific observer" do
       received = []
-      observer = await { source.observe { |e| received << e } }
-      await { source.remove(observer: observer) }
+
+      observer = await { source.add_observer { |e| received << e } }
       await { source.push(event: ThingHappened.new(source: source, id: "1")) }
-      expect(received).to be_empty
+      expect(received.size).to eq 1
+
+      await { source.remove_observer(observer: observer) }
+      await { source.push(event: ThingHappened.new(source: source, id: "1")) }
+      expect(received.size ).to eq 1
     end
 
     it "removes all observers" do
       a = collect(source)
       b = collect(source)
-      await { source.remove_all }
+      await { source.remove_all_observers }
       await { source.push(event: ThingHappened.new(source: source, id: "1")) }
       expect(a).to be_empty
       expect(b).to be_empty
@@ -58,7 +84,7 @@ RSpec.describe Plumbing::Pipeline::Source do
     it "coalesces a value-equal event pushed again during notification" do
       received = []
       again = false
-      source.observe do |event|
+      source.add_observer do |event|
         received << event
         unless again
           again = true
@@ -72,7 +98,7 @@ RSpec.describe Plumbing::Pipeline::Source do
     it "lets a duplicate through when debounce: false" do
       received = []
       again = false
-      source.observe do |event|
+      source.add_observer do |event|
         received << event
         unless again
           again = true
@@ -84,13 +110,4 @@ RSpec.describe Plumbing::Pipeline::Source do
     end
   end
 
-  describe "notify (build a registered event by type name)" do
-    before { Plumbing::Pipeline.register(ThingHappened) }
-
-    it "builds the registered event from its type name and emits it" do
-      received = collect(source)
-      await { source.notify(event_type: "ThingHappened", params: {id: "1"}) }
-      expect(received.first).to eq(ThingHappened.new(source: source, id: "1"))
-    end
-  end
 end

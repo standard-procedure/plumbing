@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 module Plumbing
-  # A literal-compatible predicate matching any of the given values.
-  # Primary use: as the type passed to a Literal prop (e.g. Message#status).
+  extend Literal::Types
+
+  # Does the property value match one of the list of supplied values
+  # USAGE:  `prop :enum, OneOf(:one, :two, :three)`
   def self.OneOf(*values) = proc { |v| values.include? v }
 
-  # `Callable` already ships with literal as `Literal::Types._Callable` — use
-  # that directly.
+  # Does the property value match the signature for an Observable or a Pipeline?
+  def self.Observable = _Interface(:add_observer, :remove_observer, :remove_all_observers)
+  def self.Observable? = _Nilable(self.Observable)
 end

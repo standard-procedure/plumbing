@@ -7,13 +7,13 @@ RSpec.describe "Plumbing::Pipeline composition" do
 
   def collect(pipeline)
     names = []
-    pipeline.observe { |event| names << event.class.name }
+    pipeline.add_observer { |event| names << event.class.name }
     names
   end
 
   describe Plumbing::Pipeline::Only do
     it "emits only matching event types (with wildcards)" do
-      src = Plumbing::Pipeline::Source.new
+      src = Plumbing::Pipeline.new
       only = described_class.new(source: src, filters: ["Error*"])
       names = collect(only)
       await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
@@ -22,7 +22,7 @@ RSpec.describe "Plumbing::Pipeline composition" do
     end
 
     it "matches an exact (non-wildcard) name" do
-      src = Plumbing::Pipeline::Source.new
+      src = Plumbing::Pipeline.new
       only = described_class.new(source: src, filters: ["InfoLogged"])
       names = collect(only)
       await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
@@ -33,7 +33,7 @@ RSpec.describe "Plumbing::Pipeline composition" do
 
   describe Plumbing::Pipeline::Except do
     it "emits everything except the matches" do
-      src = Plumbing::Pipeline::Source.new
+      src = Plumbing::Pipeline.new
       except = described_class.new(source: src, filters: ["Error*"])
       names = collect(except)
       await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
@@ -44,7 +44,7 @@ RSpec.describe "Plumbing::Pipeline composition" do
 
   describe Plumbing::Pipeline::Filter do
     it "emits only Regexp-matching event types" do
-      src = Plumbing::Pipeline::Source.new
+      src = Plumbing::Pipeline.new
       filter = described_class.new(source: src, filters: [/Error/])
       names = collect(filter)
       await { src.push(event: ErrorRaised.new(source: src, id: "1")) }
@@ -55,8 +55,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
 
   describe Plumbing::Pipeline::Junction do
     it "merges several sources into one" do
-      a = Plumbing::Pipeline::Source.new
-      b = Plumbing::Pipeline::Source.new
+      a = Plumbing::Pipeline.new
+      b = Plumbing::Pipeline.new
       junction = described_class.new(a, b)
       names = collect(junction)
       await { a.push(event: ErrorRaised.new(source: a, id: "1")) }
@@ -65,8 +65,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
     end
 
     it "adds additional sources" do
-      a = Plumbing::Pipeline::Source.new
-      b = Plumbing::Pipeline::Source.new
+      a = Plumbing::Pipeline.new
+      b = Plumbing::Pipeline.new
       junction = described_class.new(a)
       names = collect(junction)
       await { a.push(event: ErrorRaised.new(source: a, id: "1")) }
@@ -80,8 +80,8 @@ RSpec.describe "Plumbing::Pipeline composition" do
   end
 
   it "composes: Only over a Junction of two sources" do
-    a = Plumbing::Pipeline::Source.new
-    b = Plumbing::Pipeline::Source.new
+    a = Plumbing::Pipeline.new
+    b = Plumbing::Pipeline.new
     junction = Plumbing::Pipeline::Junction.new(a, b)
     only = Plumbing::Pipeline::Only.new(source: junction, filters: ["Error*"])
     names = collect(only)

@@ -148,7 +148,7 @@ RSpec.describe Plumbing::Provider::Router do
     end
   end
 
-  describe "querys" do
+  describe "queries" do
     it "generates a key from the provided route" do
       route = Plumbing::Provider::Router::DynamicRoute.new(path: "first/second/:third/:fourth")
       query = Plumbing::Provider::Router::Query.new(route: route, path: "first/second/third/fourth")

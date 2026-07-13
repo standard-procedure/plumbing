@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "base"
-
 module Plumbing
   class Pipeline
     # Emits only the events whose type name matches one of the filters
     # (trailing `*` is a prefix wildcard, e.g. "Error*").
-    class Only < Base
+    class Only < Plumbing::Pipeline
       def initialize(source:, filters: [])
         super()
         list = Array(filters)
