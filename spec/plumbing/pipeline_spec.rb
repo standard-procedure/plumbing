@@ -56,7 +56,6 @@ RSpec.describe Plumbing::Pipeline do
     end
   end
 
-
   describe "remove_observer / remove_all_observers" do
     it "removes a specific observer" do
       received = []
@@ -67,7 +66,7 @@ RSpec.describe Plumbing::Pipeline do
 
       await { source.remove_observer(observer: observer) }
       await { source.push(event: ThingHappened.new(source: source, id: "1")) }
-      expect(received.size ).to eq 1
+      expect(received.size).to eq 1
     end
 
     it "removes all observers" do
@@ -109,5 +108,4 @@ RSpec.describe Plumbing::Pipeline do
       expect(received.size).to eq(2)
     end
   end
-
 end

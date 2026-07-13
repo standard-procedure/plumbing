@@ -27,6 +27,5 @@ RSpec.describe Plumbing::Event::Types do
       expect(event.source).to eq source
       expect(event.id).to eq "1"
     end
-
   end
 end

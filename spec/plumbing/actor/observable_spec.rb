@@ -34,7 +34,7 @@ RSpec.describe Plumbing::Actor::Observable do
     end
 
     await { observable.say words: "Hello" }
-    await { observable.shout words: "boom"}
+    await { observable.shout words: "boom" }
     await { observable.say words: "Goodbye" }
 
     expect(events.size).to eq 3
