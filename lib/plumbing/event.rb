@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Plumbing
   # Base class for pipeline events: an immutable, value-comparable Literal::Data.
   # Subclasses declare their payload with `prop`. Because Literal::Data is frozen
