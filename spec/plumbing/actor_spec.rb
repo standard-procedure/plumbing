@@ -33,18 +33,32 @@ RSpec.describe Plumbing::Actor do
   end
 
   describe "definitions" do
-    it "defines a simple async method" do
+    it "defines an asynchronous method using `returns`" do
       test_class = Class.new do
         include Plumbing::Actor
 
         async :say_hello do
-          calls { "Hello" }
+          returns { "Hello" }
         end
       end
 
       instance = test_class.new
       expect(instance).to respond_to(:say_hello)
-      expect(instance).to respond_to(:_say_hello)
+    end
+
+    it "defines an async method using `calls`" do
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        prop :counter, _Integer, default: 0, reader: true
+
+        async :increment do
+          calls { @counter += 1 }
+        end
+      end
+
+      instance = test_class.new
+      expect(instance).to respond_to(:increment)
     end
 
     it "returns a message object when calling an async method" do
@@ -52,28 +66,27 @@ RSpec.describe Plumbing::Actor do
         include Plumbing::Actor
 
         async :say_hello do
-          calls { "Hello" }
+          returns { "Hello" }
         end
       end
 
-      instance = test_class.new
+      instance = test_class.start
       result = instance.say_hello
       expect(result).to be_kind_of(Plumbing::Actor::Message)
     end
 
-    it "uses the message object to get a result from an async method" do
+    it "awaits a return value from the async method" do
       test_class = Class.new do
         include Plumbing::Actor
 
         async :say_hello do
-          calls { "Hello" }
+          returns { "Hello" }
         end
       end
 
-      instance = test_class.new
-      message = instance.say_hello
-      message.deliver
-      expect(message.result).to eq "Hello"
+      instance = test_class.start
+      result = await { instance.say_hello }
+      expect(result).to eq "Hello"
     end
 
     it "allows blocks to be passed to async methods" do
@@ -81,19 +94,18 @@ RSpec.describe Plumbing::Actor do
         include Plumbing::Actor
 
         async :say_something do
-          calls do |&block|
+          returns do |&block|
             "I am speaking #{block.call}"
           end
         end
       end
 
-      instance = test_class.new
-      message = instance.say_something { "in a block" }
-      message.deliver
-      expect(message.result).to eq "I am speaking in a block"
+      instance = test_class.start
+      result = await { instance.say_something { "in a block" } }
+      expect(result).to eq "I am speaking in a block"
     end
 
-    it "allows for before and after callbacks" do
+    it "defines callbacks before and after an async method is called" do
       test_class = Class.new do
         include Plumbing::Actor
 
@@ -110,7 +122,7 @@ RSpec.describe Plumbing::Actor do
 
         async :say_hello do
           param :name, String
-          calls do |name:|
+          returns do |name:|
             "Hello #{name}"
           end
         end
@@ -119,8 +131,56 @@ RSpec.describe Plumbing::Actor do
       instance = test_class.start
       await { instance.say_hello name: "Alice" }
 
-      expect(instance.before_calls[:say_hello]).to eq({name: "Alice"})
-      expect(instance.after_calls[:say_hello]).to eq("Hello Alice")
+      expect(instance.before_calls.await[:say_hello]).to eq({name: "Alice"})
+      expect(instance.after_calls.await[:say_hello]).to eq("Hello Alice")
+    end
+  end
+
+  describe "properties" do
+    it "creates properties but does not create read/write accessors by default" do
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        prop :name, String
+
+        async :get do
+          returns { @name }
+        end
+      end
+
+      test = test_class.new name: "Alice"
+      expect(test.get.await).to eq "Alice"
+      expect(test).to_not respond_to(:alice)
+      expect(test).to_not respond_to(:"alice=")
+    end
+
+    it "creates an asynchronous reader for the property" do
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        prop :name, String, reader: true
+      end
+
+      test = test_class.new name: "Alice"
+      expect(test).to respond_to(:name)
+
+      expect(test.name).to be_kind_of Plumbing::Actor::Message
+      expect(test.name.await).to eq "Alice"
+    end
+
+    it "creates an asynchronous writer for the property" do
+      test_class = Class.new do
+        include Plumbing::Actor
+
+        prop :name, String, reader: true, writer: true
+      end
+
+      test = test_class.new name: "Alice"
+      expect(test).to respond_to(:"name=")
+
+      expect(test.name.await).to eq "Alice"
+      await { test.name = "Bob" }
+      expect(test.name.await).to eq "Bob"
     end
   end
 
@@ -134,15 +194,15 @@ RSpec.describe Plumbing::Actor do
         prop :started, _Boolean, default: false, reader: :public
         prop :name, String, reader: :public
 
-        def before_start
+        def after_start
           @started = true
         end
       end
 
       test = test_class.start name: "Alice"
 
-      expect(test.name).to eq "Alice"
-      expect(test.started).to be true
+      expect(test.name.await).to eq "Alice"
+      expect(test.started.await).to be true
     end
   end
 end

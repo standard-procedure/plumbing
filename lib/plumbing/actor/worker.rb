@@ -15,8 +15,8 @@ module Plumbing
 
       def active? = raise NotImplementedError
 
-      def post method, sender: nil, **params, &block
-        build_message(method: method, sender: sender, params: params, block: block).tap do |message|
+      def post method, **params, &block
+        build_message(method: method, params: params, block: block).tap do |message|
           dispatch message
         end
       end
@@ -25,12 +25,12 @@ module Plumbing
 
       # Deliver `methodfalse
       # handle. Base raises; each worker implements its own timer.
-      def after(delay, method:, sender: nil, params: {}, block: nil) = raise NotImplementedError
+      def after(delay, method:, params: {}, block: nil) = raise NotImplementedError
 
       # Cancel a previously-scheduled deferral (race-safe no-op flag).
       def cancel_deferred(deferral) = deferral&.cancel
 
-      def build_message(method:, sender:, params:, block:) = message_class.new(actor: @actor, method:, sender:, params:, block:)
+      def build_message(method:, params:, block:) = message_class.new(actor: @actor, method:, params:, block:)
 
       def message_class = Plumbing::Actor::Message
 

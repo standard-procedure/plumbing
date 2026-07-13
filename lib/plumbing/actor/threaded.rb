@@ -36,9 +36,9 @@ module Plumbing
 
       def can_defer? = true
 
-      def after(delay, method:, sender: nil, params: {}, block: nil)
+      def after(delay, method:, params: {}, block: nil)
         call
-        message = build_message(method: method, sender: sender, params: params, block: block)
+        message = build_message(method: method, params: params, block: block)
         deferral = Plumbing::Actor::Deferral.new
         Thread.new do
           sleep delay

@@ -38,8 +38,8 @@ module Plumbing
         raise ArgumentError, "async :#{name} requires a `calls { ... }` block" if method.implementation.nil?
 
         # external async method
-        define_method name do |sender: nil, **params, &block|
-          worker.post name, sender: sender, **params, &block
+        define_method name do |**params, &block|
+          @worker.post name, **params, &block
         end
 
         # internal validator
@@ -85,6 +85,7 @@ module Plumbing
         def calls(&implementation)
           @implementation = implementation
         end
+        alias_method :returns, :calls
       end
     end
   end
