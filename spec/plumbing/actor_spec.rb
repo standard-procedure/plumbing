@@ -139,8 +139,6 @@ RSpec.describe Plumbing::Actor do
         end
       end
 
-      puts Plumbing::Actor.selected_worker_type
-
       test = test_class.start name: "Alice"
 
       expect(test.name).to eq "Alice"

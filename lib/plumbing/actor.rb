@@ -3,6 +3,7 @@
 require_relative "actor/configuration"
 require_relative "actor/definitions"
 require_relative "actor/inline"
+require_relative "actor/observable"
 
 module Plumbing
   module Actor
