@@ -45,16 +45,14 @@ module Plumbing
         # internal validator
         define_method :"_#{name}" do |**params, &block|
           validated = method.params_class.new(**params).to_h
-          send(:"_#{name}_implementation", **validated, &block)
-        end
-
-        # internal implementation
-        define_method :"_#{name}_implementation" do |**params, &block|
           self.class.before_callbacks.each { |c| instance_exec(name, params, &c) }
-          method.implementation.call(**params, &block).tap do |result|
+          send(:"_#{name}_implementation", **validated, &block).tap do |result|
             self.class.after_callbacks.each { |c| instance_exec(name, params, result, &c) }
           end
         end
+
+        # internal implementation
+        define_method(:"_#{name}_implementation", &method.implementation)
       end
 
       def before_message &callback
