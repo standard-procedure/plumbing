@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "plumbing/actor/async"
+require "plumbing/actor/threaded"
 
 RSpec.describe Plumbing::Operation do
   context "state definitions" do
@@ -16,7 +16,7 @@ RSpec.describe Plumbing::Operation do
 
       it "initialises then moves to the first state" do
         starting_class = Class.new(Plumbing::Operation) do
-          prop :am_i_ready, _Boolean, default: false
+          prop :am_i_ready, _Boolean, default: false, reader: true
 
           starts_with do
             @am_i_ready = true
@@ -26,14 +26,14 @@ RSpec.describe Plumbing::Operation do
         end
 
         starter = starting_class.start
-        expect(starter.am_i_ready).to be true
+        expect(starter.am_i_ready.await).to be true
       end
     end
 
     describe "actions" do
       it "is called then moves to the next state" do
         counter_class = Class.new(Plumbing::Operation) do
-          prop :value, _Integer, default: 0
+          prop :value, _Integer, default: 0, reader: true
 
           action :increment do
             @value += 1
@@ -44,7 +44,7 @@ RSpec.describe Plumbing::Operation do
         end
 
         counter = counter_class.start
-        expect(counter.value).to eq 1
+        expect(counter.value.await).to eq 1
       end
     end
 
@@ -70,19 +70,17 @@ RSpec.describe Plumbing::Operation do
 
         is_it_the_weekend = is_it_the_weekend_class.start(day: "November")
         expect(is_it_the_weekend).to be_failed
-        expect(is_it_the_weekend.exception).to be_kind_of Plumbing::Operation::NoDecision
+        expect(is_it_the_weekend.exception.await).to be_kind_of Plumbing::Operation::NoDecision
       end
     end
 
     describe "waiting and interactions" do
       before do
-        Plumbing::Actor.register(:async, can_defer: true) { |actor| Plumbing::Actor::Async.new(actor: actor) }
-        Plumbing::Actor.uses :async
+        Plumbing::Actor.uses :threaded
       end
 
       after do
         Plumbing::Actor.uses :inline
-        Plumbing::Actor.worker_types.delete(:async)
       end
 
       it "waits until a condition is met" do

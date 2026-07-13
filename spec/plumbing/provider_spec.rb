@@ -146,7 +146,7 @@ RSpec.describe Plumbing::Provider do
 
           sleep 0.3                              # eviction fires
 
-          expect(built.first.worker).to be_active # still running — not ours to stop
+          expect(built.first.worker.await).to be_active # still running — not ours to stop
         end
 
         it "runs on_expiry: :stop against an evicted actor, releasing its worker" do
@@ -154,11 +154,11 @@ RSpec.describe Plumbing::Provider do
           provider.register(path: "svc", expires_in: 0.1, on_expiry: :stop) { Plumbing::Provider.new.tap { built << _1 } }
 
           provider["svc"]
-          expect(built.first.worker).to be_active
+          expect(built.first).to be_active
 
           sleep 0.3
 
-          expect(built.first.worker).not_to be_active
+          expect(built.first).to_not be_active
         end
 
         it "runs a callable on_expiry with the evicted value" do
@@ -340,11 +340,11 @@ RSpec.describe Plumbing::Provider do
           end
 
           provider["users/1/docs"]      # build and cache the nested provider
-          expect(built.first.worker).to be_active
+          expect(built.first).to be_active
 
           sleep 0.3
 
-          expect(built.first.worker).not_to be_active
+          expect(built.first).to_not be_active
         end
       end
     end
